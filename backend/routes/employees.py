@@ -23,25 +23,28 @@ def create_employee():
             ).date()
 
         employee = Employee(
-            employee_id=data.get("employee_id"),
-            first_name=data.get("first_name"),
-            last_name=data.get("last_name"),
-            email=data.get("email"),
-            phone=data.get("phone"),
+    employee_id=data.get("employee_id"),
+    first_name=data.get("first_name"),
+    last_name=data.get("last_name"),
+    email=data.get("email"),
+    phone=data.get("phone"),
 
-            department=data.get("department"),
-            designation=data.get("designation"),
-            role=data.get("role"),
+    department=data.get("department"),
+    designation=data.get("designation"),
+    role=data.get("role"),
 
-            joining_date=joining_date,
-            reporting_manager=data.get("reporting_manager"),
+    reporting_manager=data.get(
+        "reporting_manager"
+    ),
 
-            salary=float(data.get("salary", 0)),
+    joining_date=joining_date,
 
-            profile_completed=False,
-            is_first_login=True,
-            status="Active"
-        )
+    salary=float(data.get("salary", 0)),
+
+    profile_completed=False,
+    is_first_login=True,
+    status="Active"
+)
 
         db.session.add(employee)
         db.session.commit()
@@ -82,7 +85,8 @@ def get_employees():
             "email": emp.email,
             "department": emp.department,
             "designation": emp.designation,
-            "role": emp.role
+            "role": emp.role,
+            "reporting_manager": emp.reporting_manager
         }
         for emp in employees
     ])

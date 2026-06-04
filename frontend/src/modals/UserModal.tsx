@@ -104,23 +104,48 @@ const [selectedEmployee, setSelectedEmployee] = useState("");
   };
 
 
-  const handleEmployeeSelect = (e: any) => {
-  const empId = Number(e.target.value);
+  const handleEmployeeSelect = (
+  e: React.ChangeEvent<HTMLSelectElement>
+) => {
 
-  setSelectedEmployee(empId.toString());
+  const employeeId = Number(e.target.value);
+
+  setSelectedEmployee(employeeId);
 
   const employee = employees.find(
-    (emp: any) => emp.id === empId
+    (emp: any) => emp.id === employeeId
   );
 
-  if (employee) {
-    setFormData((prev) => ({
-      ...prev,
-      employee_id: employee.id,
-      full_name: `${employee.first_name || ""} ${employee.last_name || ""}`,
-      email: employee.email || "",
-    }));
-  }
+  if (!employee) return;
+
+  const selectedRole = roles.find(
+    (role: any) =>
+      role.name === employee.role
+  );
+
+  const selectedTeam = teams.find(
+    (team: any) =>
+      team.name === employee.designation
+  );
+
+  setFormData({
+    ...formData,
+
+    employee_id: employee.id,
+
+    full_name:
+      `${employee.first_name} ${employee.last_name}`,
+
+    email: employee.email,
+
+    role_id: selectedRole
+      ? selectedRole.id
+      : "",
+
+    team_id: selectedTeam
+      ? selectedTeam.id
+      : "",
+  });
 };
 
   return (

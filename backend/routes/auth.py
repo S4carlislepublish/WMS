@@ -18,57 +18,63 @@ auth_bp = Blueprint('auth', __name__)
 # LOGIN
 # =========================
 
-@auth_bp.route('/login', methods=['POST'])
+@auth_bp.route("/login", methods=["POST"])
 def login():
 
     try:
+
         data = request.get_json()
 
         if not data:
             return jsonify({
-                'error': 'Request body is missing'
+                "success": False,
+                "error": "Request body is missing"
             }), 400
 
-        email = data.get('email')
-        password = data.get('password')
+        email = data.get("email")
+        password = data.get("password")
 
         if not email or not password:
             return jsonify({
-                'error': 'Email and password are required'
+                "success": False,
+                "error": "Email and Password are required"
             }), 400
 
-        # Find User
+        # Find user
         user = User.query.filter_by(
             company_email=email
         ).first()
 
         if not user:
             return jsonify({
-                'error': 'Invalid email or password'
+                "success": False,
+                "error": "Invalid Email or Password"
             }), 401
 
-        # Verify Password
+        # Verify password
         if not user.check_password(password):
             return jsonify({
-                'error': 'Invalid email or password'
+                "success": False,
+                "error": "Invalid Email or Password"
             }), 401
 
-        # Check Active Status
+        # Check active
         if not user.is_active:
             return jsonify({
-                'error': 'Account is deactivated'
+                "success": False,
+                "error": "Account is Deactivated"
             }), 403
 
-        # Find Employee Record
+        # Employee record
         employee = Employee.query.filter_by(
             user_id=user.id
         ).first()
 
-        # Update Last Login
+        # Update login time
         user.last_login = datetime.utcnow()
         db.session.commit()
 
-        # Create Tokens
+        # JWT Tokens
         access_token = create_access_token(
             identity=str(user.id)
         )
@@ -78,32 +84,42 @@ def login():
         )
 
         return jsonify({
-            'access_token': access_token,
-            'refresh_token': refresh_token,
 
-            'user': user.to_dict(),
+            "success": True,
 
-            'role': (
-                user.role.name
-                if user.role else None
-            ),
+            "message": "Login Successful",
 
-            'employee_id': (
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+
+            "user_id": user.id,
+
+            "employee_id": (
                 employee.id
-                if employee else None
+                if employee
+                else None
             ),
 
-            'profile_completed': (
+            "role": (
+                user.role.name
+                if user.role
+                else None
+            ),
+
+            "profile_completed": (
                 employee.profile_completed
-                if employee else False
+                if employee
+                else False
             ),
 
-            'is_first_login': (
+            "is_first_login": (
                 employee.is_first_login
-                if employee else True
+                if employee
+                else True
             ),
 
-            'message': 'Login successful'
+            "user": user.to_dict()
+
         }), 200
 
     except Exception as e:
@@ -111,7 +127,8 @@ def login():
         print("LOGIN ERROR:", str(e))
 
         return jsonify({
-            'error': str(e)
+            "success": False,
+            "error": str(e)
         }), 500
 
 

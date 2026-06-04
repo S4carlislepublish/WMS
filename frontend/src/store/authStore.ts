@@ -55,9 +55,22 @@ const isFirstLogin =
 const role =
   response.data.role
 
-      localStorage.setItem('token', accessToken)
-      localStorage.setItem('user', JSON.stringify(userData))
       localStorage.setItem(
+  'token',
+  accessToken
+)
+
+localStorage.setItem(
+  'user',
+  JSON.stringify(userData)
+)
+
+localStorage.setItem(
+  'user_id',
+  String(response.data.user_id)
+)
+
+localStorage.setItem(
   'employee_id',
   String(response.data.employee_id)
 )
@@ -100,12 +113,13 @@ const role =
     }
   },
 
-  logout: () => {
+ logout: () => {
 
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('employee_id')
-
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  localStorage.removeItem('user_id')
+  localStorage.removeItem('employee_id')
+  
     set({
       user: null,
       token: null,

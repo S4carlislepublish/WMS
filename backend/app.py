@@ -18,6 +18,7 @@ from routes.projects import projects_bp
 from routes.workflow import workflow_bp
 from routes.dashboard import dashboard_bp
 from routes.employees import employees_bp
+from routes.attendance import attendance_bp
 
 def create_app():
     app = Flask(__name__)
@@ -37,6 +38,11 @@ def create_app():
     app.register_blueprint(
     employees_bp,
     url_prefix="/api/employees"
+)
+    
+    app.register_blueprint(
+    attendance_bp,
+    url_prefix="/api/attendance"
 )
     
 

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect} from 'react';
+import { toast } from 'react-hot-toast';
 import {
   HomeIcon,
   CheckCircleIcon,
@@ -121,16 +122,6 @@ const leaveRequestsData: LeaveRequest[] = [
   { id: 4, leaveType: "Sick Leave", fromDate: "2026-05-01", toDate: "2026-05-02", days: 2, reason: "Flu symptoms", emergencyContact: "+1 (555) 987-6543", status: "Rejected", managerApproval: "2026-04-28", submittedAt: "2026-04-28" },
 ];
 
-const attendanceData: Attendance[] = [
-  { id: 1, date: "2026-06-01", checkIn: "09:00 AM", checkOut: "06:00 PM", workingHours: 9, status: "Present" },
-  { id: 2, date: "2026-05-31", checkIn: "08:55 AM", checkOut: "05:55 PM", workingHours: 9, status: "Present" },
-  { id: 3, date: "2026-05-30", checkIn: "09:05 AM", checkOut: "06:05 PM", workingHours: 9, status: "Present" },
-  { id: 4, date: "2026-05-29", checkIn: "09:00 AM", checkOut: "06:00 PM", workingHours: 9, status: "Present" },
-  { id: 5, date: "2026-05-28", checkIn: "09:10 AM", checkOut: "06:10 PM", workingHours: 9, status: "Present" },
-  { id: 6, date: "2026-05-27", checkIn: "-", checkOut: "-", workingHours: 0, status: "Absent" },
-  { id: 7, date: "2026-05-26", checkIn: "09:00 AM", checkOut: "06:00 PM", workingHours: 9, status: "Present" },
-  { id: 8, date: "2026-05-25", checkIn: "09:00 AM", checkOut: "06:00 PM", workingHours: 9, status: "Present" },
-];
 
 const performanceData: Performance = {
   efficiencyScore: 87,
@@ -189,6 +180,34 @@ const EmployeeDashboardPage: React.FC = () => {
     emergencyContact: '',
   });
 
+  
+const [attendanceData, setAttendanceData] =
+  useState<Attendance[]>([]);
+
+  useEffect(() => {
+
+  const userId =
+    localStorage.getItem("user_id");
+
+  if (!userId) return;
+
+  fetch(
+    `http://localhost:5000/api/attendance/history/${userId}`
+  )
+    .then(res => res.json())
+    .then(data => {
+
+      console.log("Attendance Data:", data);
+
+      setAttendanceData(data);
+
+    })
+    .catch(err => {
+      console.error(err);
+    });
+
+}, []);
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: HomeIcon },
     { id: 'tasks', label: 'My Tasks', icon: CheckCircleIcon },
@@ -214,24 +233,24 @@ const [teaTime, setTeaTime] = useState(0);
 
 
   // Working timer - automatically subtracts break time
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isCheckedIn && checkInTime) {
-      interval = setInterval(() => {
-        const now = Date.now();
-        const totalTime = now - checkInTime.getTime();
+  // useEffect(() => {
+  //   let interval: NodeJS.Timeout;
+  //   if (isCheckedIn && checkInTime) {
+  //     interval = setInterval(() => {
+  //       const now = Date.now();
+  //       const totalTime = now - checkInTime.getTime();
         
-        // Subtract break time instantly
-        let breakTime = 0;
-        if (isLunchTaken) breakTime += BREAK_DURATION;
-        if (isTeaTaken) breakTime += BREAK_DURATION;
+  //       // Subtract break time instantly
+  //       let breakTime = 0;
+  //       if (isLunchTaken) breakTime += BREAK_DURATION;
+  //       if (isTeaTaken) breakTime += BREAK_DURATION;
         
-        const workingTime = totalTime - breakTime;
-        setTimer(formatTime(workingTime));
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isCheckedIn, checkInTime, isLunchTaken, isTeaTaken]);
+  //       const workingTime = totalTime - breakTime;
+  //       setTimer(formatTime(workingTime));
+  //     }, 1000);
+  //   }
+  //   return () => clearInterval(interval);
+  // }, [isCheckedIn, checkInTime, isLunchTaken, isTeaTaken]);
 
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(Math.max(0, ms) / 1000);
@@ -241,33 +260,147 @@ const [teaTime, setTeaTime] = useState(0);
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const handleCheckIn = () => {
-    setIsCheckedIn(true);
-    setCheckInTime(new Date());
-    setTimer("00:00:00");
-  };
+  const handleCheckIn = async () => {
+  try {
 
-  const handleCheckOut = () => {
-    setIsCheckedIn(false);
-    setCheckInTime(null);
-    setTimer("00:00:00");
-    setIsLunchTaken(false);
-    setIsTeaTaken(false);
-  };
+    const userId =
+      localStorage.getItem("user_id");
 
-  const handleLunchBreak = () => {
-    if (!isLunchTaken) {
-      setIsLunchTaken(true);
-      // Timer automatically updates due to dependency change
+    const response = await fetch(
+      "http://localhost:5000/api/attendance/checkin",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: Number(userId),
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    console.log(data);
+
+    if (data.success) {
+
+      const now = new Date();
+
+      setIsCheckedIn(true);
+
+      setCheckInTime(now);
+
+      localStorage.setItem(
+  `checkInTime_${userId}`,
+  now.toISOString()
+);
+
     }
-  };
 
-  const handleTeaBreak = () => {
-    if (!isTeaTaken) {
-      setIsTeaTaken(true);
-      // Timer automatically updates due to dependency change
+  } catch (error) {
+
+    console.error(error);
+
+  }
+};
+
+const handleCheckOut = async () => {
+  try {
+
+    const userId =
+      localStorage.getItem("user_id");
+
+    const response = await fetch(
+      "http://localhost:5000/api/attendance/checkout",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: Number(userId),
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (data.success) {
+      const userId =
+  localStorage.getItem("user_id");
+
+const attendanceResponse =
+  await fetch(
+    `http://localhost:5000/api/attendance/history/${userId}`
+  );
+
+const attendanceHistory =
+  await attendanceResponse.json();
+
+setAttendanceData(
+  attendanceHistory
+);
+
+      setIsCheckedIn(false);
+
+      setCheckInTime(null);
+
+      setTimer("00:00:00");
+
+      localStorage.removeItem(
+  `checkInTime_${userId}`
+);
     }
-  };
+
+  } catch (error) {
+
+    console.error(error);
+
+  }
+};
+
+  const handleLunchBreak = async () => {
+
+  const userId =
+    localStorage.getItem("user_id");
+
+  await fetch(
+    "http://localhost:5000/api/attendance/lunch-break",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        user_id: Number(userId)
+      })
+    }
+  );
+
+  setIsLunchTaken(true);
+};
+
+const handleTeaBreak = async () => {
+
+  const userId =
+    localStorage.getItem("user_id");
+
+  await fetch(
+    "http://localhost:5000/api/attendance/tea-break",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        user_id: Number(userId)
+      })
+    }
+  );
+
+  setIsTeaTaken(true);
+};
 
   const filteredTasks = useMemo(() => {
     return tasksData.filter(task => {
@@ -329,13 +462,26 @@ const [teaTime, setTeaTime] = useState(0);
 
     const { user } = useAuthStore();
 useEffect(() => {
+
+  const userId =
+    localStorage.getItem("user_id");
+
+  if (!userId) return;
+
   const savedCheckIn =
-    localStorage.getItem("checkInTime");
+    localStorage.getItem(
+      `checkInTime_${userId}`
+    );
 
   if (savedCheckIn) {
+
     setIsCheckedIn(true);
-    setCheckInTime(new Date(savedCheckIn));
+
+    setCheckInTime(
+      new Date(savedCheckIn)
+    );
   }
+
 }, []);
 useEffect(() => {
   let interval: NodeJS.Timeout;
@@ -370,7 +516,30 @@ useEffect(() => {
 }, [isCheckedIn, checkInTime]);
 
 
+useEffect(() => {
 
+  const userId =
+    localStorage.getItem("user_id");
+
+  if (!userId) return;
+
+  fetch(
+    `http://localhost:5000/api/attendance/status/${userId}`
+  )
+    .then(res => res.json())
+    .then(data => {
+
+      if (data.checked_in) {
+
+        setIsCheckedIn(true);
+
+        setCheckInTime(
+          new Date(data.check_in)
+        );
+      }
+    });
+
+}, []);
 
 
 
@@ -914,6 +1083,7 @@ useEffect(() => {
 
     {leaveRequestsData.slice(0, 1).map((leave) => (
       <div key={leave.id}>
+
         <div className="flex items-center justify-between">
 
           {/* Applied */}
@@ -928,7 +1098,7 @@ useEffect(() => {
 
           <div className="flex-1 h-1 bg-gray-300 mx-2"></div>
 
-          {/* Manager */}
+          {/* Reporting Manager */}
           <div className="flex flex-col items-center">
             <div
               className={`w-12 h-12 rounded-full flex items-center justify-center text-white
@@ -948,33 +1118,13 @@ useEffect(() => {
             </div>
 
             <p className="text-sm font-medium mt-2">
-              Manager
+              Reporting Manager
             </p>
           </div>
 
           <div className="flex-1 h-1 bg-gray-300 mx-2"></div>
 
-          {/* HR */}
-          <div className="flex flex-col items-center">
-            <div
-              className={`w-12 h-12 rounded-full flex items-center justify-center text-white
-              ${
-                leave.hrApproval
-                  ? "bg-green-500"
-                  : "bg-yellow-500"
-              }`}
-            >
-              {leave.hrApproval ? "✓" : "⏳"}
-            </div>
-
-            <p className="text-sm font-medium mt-2">
-              HR
-            </p>
-          </div>
-
-          <div className="flex-1 h-1 bg-gray-300 mx-2"></div>
-
-          {/* Final */}
+          {/* Final Status */}
           <div className="flex flex-col items-center">
             <div
               className={`w-12 h-12 rounded-full flex items-center justify-center text-white
@@ -994,9 +1144,10 @@ useEffect(() => {
             </div>
 
             <p className="text-sm font-medium mt-2">
-              Final
+              Final Status
             </p>
           </div>
+
         </div>
 
         <div className="mt-5 text-center">
@@ -1013,6 +1164,7 @@ useEffect(() => {
             Current Status : {leave.status}
           </span>
         </div>
+
       </div>
     ))}
   </div>
@@ -1077,7 +1229,7 @@ useEffect(() => {
                 <StatCard
                   icon={CheckCircleIcon}
                   title="Present Days"
-                  value={attendanceData.filter(a => a.status === 'Present').length}
+                  value={attendanceData.length}
                   subtitle="This month"
                   trend="normal"
                   color="green"
