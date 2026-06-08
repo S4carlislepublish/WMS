@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useAuthStore } from './store/authStore';
-import { apiService } from './services/api';
+import { useAuthStore } from '../store/authStore';
+import { apiService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
@@ -16,9 +16,9 @@ import {
   DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
-import CreateProjectModal from './modals/CreateProjectModal';
-import { workflowService } from './services/api';
-import { projectService } from './services/api';
+import CreateProjectModal from '../modals/CreateProjectModal';
+import { workflowService } from '../services/api';
+import { projectService } from '../services/api';
 
 
 interface Project {

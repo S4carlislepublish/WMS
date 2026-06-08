@@ -27,7 +27,7 @@ import {
   ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
-import { useAuthStore } from "./store/authStore";
+import { useAuthStore } from "../store/authStore";
 
 
 // TypeScript Interfaces
@@ -186,7 +186,7 @@ const [leaveRequests, setLeaveRequests] =
   const [feedback, setFeedback] = useState("");
   const [employees, setEmployees] = useState<any[]>([]);
   useEffect(() => {
-  fetch("http://localhost:5000/api/employees/")
+  fetch("http://10.1.8.103:5000/api/employees/")
     .then((res) => res.json())
     .then((data) => {
       console.log("Employees:", data);
@@ -218,7 +218,7 @@ const loadLeaves = async () => {
   try {
 
     const res = await fetch(
-      "http://localhost:5000/api/leaves/"
+      "http://10.1.8.103:5000/api/leaves/"
     );
 
     const data = await res.json();
@@ -281,7 +281,7 @@ const [attendanceData, setAttendanceData] =
   if (!userId) return;
 
   fetch(
-    `http://localhost:5000/api/attendance/history/${userId}`
+    `http://10.1.8.103:5000/api/attendance/history/${userId}`
   )
     .then(res => res.json())
     .then(data => {
@@ -357,7 +357,7 @@ const [teaTime, setTeaTime] = useState(0);
       localStorage.getItem("user_id");
 
     const response = await fetch(
-      "http://localhost:5000/api/attendance/checkin",
+      "http://10.1.8.103:5000/api/attendance/checkin",
       {
         method: "POST",
         headers: {
@@ -402,7 +402,7 @@ const handleCheckOut = async () => {
       localStorage.getItem("user_id");
 
     const response = await fetch(
-      "http://localhost:5000/api/attendance/checkout",
+      "http://10.1.8.103:5000/api/attendance/checkout",
       {
         method: "POST",
         headers: {
@@ -422,7 +422,7 @@ const handleCheckOut = async () => {
 
 const attendanceResponse =
   await fetch(
-    `http://localhost:5000/api/attendance/history/${userId}`
+    `http://10.1.8.103:5000/api/attendance/history/${userId}`
   );
 
 const attendanceHistory =
@@ -456,7 +456,7 @@ setAttendanceData(
     localStorage.getItem("user_id");
 
   await fetch(
-    "http://localhost:5000/api/attendance/lunch-break",
+    "http://10.1.8.103:5000/api/attendance/lunch-break",
     {
       method: "POST",
       headers: {
@@ -477,7 +477,7 @@ const handleTeaBreak = async () => {
     localStorage.getItem("user_id");
 
   await fetch(
-    "http://localhost:5000/api/attendance/tea-break",
+    "http://10.1.8.103:5000/api/attendance/tea-break",
     {
       method: "POST",
       headers: {
@@ -539,7 +539,7 @@ const handleTeaBreak = async () => {
     if (editingLeave) {
 
       response = await fetch(
-        `http://localhost:5000/api/leaves/update/${editingLeave.id}`,
+        `http://10.1.8.103:5000/api/leaves/update/${editingLeave.id}`,
         {
           method: "PUT",
           headers: {
@@ -562,7 +562,7 @@ const handleTeaBreak = async () => {
 
       // NEW LEAVE
       response = await fetch(
-        "http://localhost:5000/api/leaves/",
+        "http://10.1.8.103:5000/api/leaves/",
         {
           method: "POST",
           headers: {
@@ -738,7 +738,7 @@ useEffect(() => {
   if (!userId) return;
 
   fetch(
-    `http://localhost:5000/api/attendance/status/${userId}`
+    `http://10.1.8.103:5000/api/attendance/status/${userId}`
   )
     .then(res => res.json())
     .then(data => {
@@ -770,7 +770,7 @@ const approveLeave = async (
   try {
 
     const res = await fetch(
-      `http://localhost:5000/api/leaves/approve/${id}`,
+      `http://10.1.8.103:5000/api/leaves/approve/${id}`,
       {
         method: "PUT",
       }
@@ -803,7 +803,7 @@ const rejectLeave = async (
   try {
 
     const res = await fetch(
-      `http://localhost:5000/api/leaves/reject/${id}`,
+      `http://10.1.8.103:5000/api/leaves/reject/${id}`,
       {
         method: "PUT",
       }
@@ -836,7 +836,7 @@ const cancelLeave = async (
   try {
 
     const res = await fetch(
-      `http://localhost:5000/api/leaves/cancel/${id}`,
+      `http://10.1.8.103:5000/api/leaves/cancel/${id}`,
       {
         method: "PUT",
       }

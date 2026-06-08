@@ -62,7 +62,7 @@ const Toggle = ({ enabled = false }: { enabled?: boolean }) => {
     <button
       type="button"
       className={`relative h-6 w-11 rounded-full transition ${
-        enabled ? 'bg-slate-900' : 'bg-slate-300'
+        enabled ? 'bg-[#49464C]' : 'bg-slate-300'
       }`}
     >
       <span
@@ -114,7 +114,7 @@ const SettingsPage: React.FC = () => {
             >
               <div className="space-y-5">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-900 text-xl font-bold text-white">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#1985A1] text-xl font-bold text-white">
                     SB
                   </div>
                   <div>
@@ -158,7 +158,7 @@ const SettingsPage: React.FC = () => {
                   <button className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                     Cancel
                   </button>
-                  <button className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800">
+                  <button className="rounded-xl bg-[#46494C] px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800">
                     Save changes
                   </button>
                 </div>
@@ -249,7 +249,7 @@ const SettingsPage: React.FC = () => {
                   placeholder="New password"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-slate-400"
                 />
-                <button className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800">
+                <button className="rounded-xl bg-[#46494C] px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800">
                   Update password
                 </button>
               </div>
@@ -387,7 +387,7 @@ const SettingsPage: React.FC = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex min-w-fit items-center gap-3 rounded-xl px-4 py-3 text-left transition ${
                     isActive
-                      ? 'bg-slate-900 text-white shadow-sm'
+                      ? 'bg-[#1985A1] text-white shadow-sm'
                       : 'text-slate-600 hover:bg-slate-50'
                   }`}
                 >

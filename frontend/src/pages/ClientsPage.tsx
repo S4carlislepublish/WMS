@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { apiService } from './services/api';
+import { apiService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
@@ -16,7 +16,7 @@ import {
   ChevronDownIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline';
-import ClientModal from './modals/ClientModal';
+import ClientModal from '../modals/ClientModal';
 
 
 interface Client {
@@ -168,7 +168,7 @@ const ClientsPage: React.FC = () => {
           onClick={handleCreate}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-md"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#46494C] text-white rounded-lg font-semibold transition-colors shadow-md"
         >
           <PlusIcon className="h-5 w-5" />
           Add Client
@@ -184,8 +184,8 @@ const ClientsPage: React.FC = () => {
               <p className="text-sm text-gray-500 font-medium">Total Clients</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">{pagination.total}</p>
             </div>
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <BuildingOfficeIcon className="h-6 w-6 text-blue-600" />
+            <div className="p-3 bg-[#434649] rounded-lg">
+              <BuildingOfficeIcon className="h-6 w-6 text-white" />
             </div>
           </div>
         </div>
@@ -193,12 +193,12 @@ const ClientsPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500 font-medium">Active Clients</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">
+              <p className="text-3xl font-bold text-[#46494C] mt-2">
                 {clients.filter(c => c.status === 'active').length}
               </p>
             </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <UserCircleIcon className="h-6 w-6 text-green-600" />
+            <div className="p-3 bg-[#434649] rounded-lg">
+              <UserCircleIcon className="h-6 w-6 text-white" />
             </div>
           </div>
         </div>
@@ -206,7 +206,7 @@ const ClientsPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500 font-medium">Publishing</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">
+              <p className="text-3xl font-bold text-[#46494C] mt-2">
                 {clients.filter(c => c.category === 'Publishing').length}
               </p>
             </div>
@@ -384,7 +384,7 @@ const ClientsPage: React.FC = () => {
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                          <div className="w-10 h-10 bg-[#1985A1] rounded-full flex items-center justify-center text-white font-semibold text-sm">
                             {getClientInitials(client.designation)}
                           </div>
                           <div>

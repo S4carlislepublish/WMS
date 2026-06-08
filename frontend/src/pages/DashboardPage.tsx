@@ -1,7 +1,7 @@
 // Dashboard Page
 import React, { useEffect, useState, useRef } from 'react';
-import { useAuthStore } from './store/authStore';
-import { apiService } from './services/api';
+import { useAuthStore } from '../store/authStore';
+import { apiService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChartBarIcon,

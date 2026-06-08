@@ -169,7 +169,7 @@ Object.keys(formData).forEach((key) => {
  
 
       const response = await fetch(
-  `http://localhost:5000/api/employees/${employeeId}`,
+  `http://10.1.8.103:5000/api/employees/${employeeId}`,
   {
     method: "PATCH",
     body: formPayload,
@@ -192,7 +192,7 @@ Object.keys(formData).forEach((key) => {
   const employeeId = localStorage.getItem("employee_id");
 
 const profileImageUrl =
-  `http://localhost:5000/api/employees/image/${employeeId}`;
+  `http://10.1.8.103:5000/api/employees/image/${employeeId}`;
 
   useEffect(() => {
     const fetchEmployee = async () => {
@@ -200,7 +200,7 @@ const profileImageUrl =
         const employeeId = localStorage.getItem("employee_id");
 
         const response = await fetch(
-  `http://localhost:5000/api/employees/${employeeId}`
+  `http://10.1.8.103:5000/api/employees/${employeeId}`
 );
 
 const data = await response.json();
@@ -695,7 +695,7 @@ if (data.skills) {
               <button
                 type="button"
                 onClick={addSkill}
-                className="rounded-xl bg-indigo-600 px-5 py-3 font-medium text-white hover:bg-indigo-700 transition-all"
+                className="rounded-xl bg-[#46494C] px-5 py-3 font-medium text-white  transition-all"
               >
                 Add
               </button>
@@ -871,7 +871,7 @@ if (data.skills) {
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8 text-center">
-          <div className="mb-4 inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 p-4 shadow-lg">
+          <div className="mb-4 inline-flex items-center justify-center rounded-2xl bg-[#1F7A8C] p-4 shadow-lg">
             <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -887,8 +887,8 @@ if (data.skills) {
           {employeeInfo && (
             <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               {/* Header */}
-              <div className="relative border-b border-slate-200 bg-[#1F7A8C] px-6 py-8 sm:px-8">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_30%)]" />
+              <div className="relative border-b border-slate-200 bg-[#4C5C68] px-6 py-8 sm:px-8">
+                <div className="absolute inset-0" />
 
                 <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
@@ -943,7 +943,7 @@ if (data.skills) {
               {/* Body */}
               <div className="p-6 sm:p-8">
                 <div className="mb-6 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 shadow-md">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1F7A8C] shadow-md">
                     <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
@@ -986,7 +986,7 @@ if (data.skills) {
                     className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6 transition-all hover:border-indigo-300 hover:shadow-md"
                   >
                     <div className="mb-5 flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1F7A8C] text-white">
                         {section.icon}
                       </div>
                       <h3 className="text-lg font-bold text-slate-900">{section.title}</h3>
@@ -1010,7 +1010,7 @@ if (data.skills) {
                 </div>
                 <button
                   type="submit"
-                  className="group relative inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-3.5 font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl hover:shadow-indigo-500/40 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                  className="group relative inline-flex items-center gap-2 rounded-xl bg-[#46494C] px-8 py-3.5 font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl hover:shadow-[#46494C]/40 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#46494C] focus:ring-offset-2"
                 >
                   <span>Complete Profile</span>
                   <svg className="h-5 w-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1027,7 +1027,7 @@ if (data.skills) {
         <div className="mt-6 text-center">
           <p className="text-sm text-slate-500">Step 2 of 3 – Complete Profile Information</p>
           <div className="mx-auto mt-2 max-w-md overflow-hidden rounded-full bg-slate-200">
-            <div className="h-2 w-2/3 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600"></div>
+            <div className="h-2 w-2/3 rounded-full bg-[#46494C]"></div>
           </div>
         </div>
       </div>

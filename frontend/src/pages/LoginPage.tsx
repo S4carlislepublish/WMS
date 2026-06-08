@@ -2,15 +2,15 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import logo from "./images/s.png"
-import { useAuthStore } from "./store/authStore";
+import logo from "../images/s.png"
+import { useAuthStore } from "../store/authStore";
 import {
   LockClosedIcon,
   UserCircleIcon,
   EyeIcon,
   EyeSlashIcon,
 } from "@heroicons/react/24/solid";
-import bg from "../src/images/hero-bg.jpg";
+import bg from "../images/hero-bg.jpg";
 // import logo from "../src/images/s4carlisle-logo.png"; // optional
 
 const LoginPage: React.FC = () => {

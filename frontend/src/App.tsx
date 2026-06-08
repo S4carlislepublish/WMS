@@ -15,23 +15,24 @@ import { useAuthStore } from './store/authStore';
 import DashboardLayout from './layouts/DashboardLayout';
 
 // Pages
-import LoginPage from './LoginPage';
-import DashboardPage from './DashboardPage';
-import ProjectsPage from './ProjectsPage';
-import ClientsPage from './ClientsPage';
-import SettingsPage from './SettingsPage';
-import PreEditingPage from './PreEditingPage';
-import CopywritingPage from './CopywritingPage';
-import QAPage from './QAPage';
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+import ProjectsPage from './pages/ProjectsPage';
+import ClientsPage from './pages/ClientsPage';
+import SettingsPage from './pages/SettingsPage';
+import PreEditingPage from './pages/PreEditingPage';
+import CopywritingPage from './pages/CopywritingPage';
+import QAPage from './pages/QAPage';
 import ScheduleReport from "./Reports/ScheduleReport"
 import TodaySchedule  from "./Reports/TodaySchedule"
 import ProjectSchedule   from "./Reports/ProjectSchedule"
-import  HrmsModule  from "./HRManagePage";
-import CalendarPage from "./Calendarpage"
-import ManagerDashboardPage from './ManagerDashboardPage';
-import EmployeeDashboardPage from './EmployeeDashboardPage';
-import Editorpage from './EditorPage';
-import CompleteProfile from './Compeleteprofilepage';
+import  HrmsModule  from "./pages/HRManagePage";
+import CalendarPage from "./pages/Calendarpage"
+import ManagerDashboardPage from './pages/ManagerDashboardPage';
+import EmployeeDashboardPage from './pages/EmployeeDashboardPage';
+import Editorpage from './pages/EditorPage';
+import CompleteProfile from './pages/Compeleteprofilepage';
+import PayrollDashboardPage from './pages/PayrollDashboardPage';
 
 
 
@@ -204,6 +205,8 @@ return ( <BrowserRouter>
       }
     />
 
+    
+
 {/* Reports */}
 
 <Route
@@ -283,6 +286,15 @@ return ( <BrowserRouter>
   path="/complete-profile"
   element={
       <CompleteProfile />
+  }
+/>
+
+<Route
+  path="/payroll"
+  element={
+    <ProtectedRoute>
+      <PayrollDashboardPage />
+    </ProtectedRoute>
   }
 />
 

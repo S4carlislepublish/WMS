@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -17,6 +17,7 @@ import {
   Bars3Icon,
   ChevronDownIcon,
   DocumentChartBarIcon,
+  BanknotesIcon,
   SparklesIcon,
   ClockIcon,
   PresentationChartLineIcon,
@@ -170,6 +171,11 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({
       { name: "Dashboard", icon: HomeIcon, path: "/dashboard" },
       { name: "Projects", icon: FolderIcon, path: "/projects" },
       { name: "Clients", icon: UserGroupIcon, path: "/clients" },
+         {
+      name: "Payroll",
+      icon: BanknotesIcon,
+      path: "/payroll",
+    },
       { name: "Settings", icon: Cog6ToothIcon, path: "/settings" },
       { name: "Calendar", icon: CalendarIcon, path: "/calendar" },
       { name: "Reports", icon: ChartBarIcon, path: "/reports" },
@@ -225,16 +231,27 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({
     ];
   }
 
+
+
   // HR
 if (user?.role === "HR") {
   return [
-
-    { name: "Dashboard", icon: HomeIcon, path: "/dashboard" },
+    {
+      name: "Dashboard",
+      icon: HomeIcon,
+      path: "/dashboard",
+    },
 
     {
       name: "HR Management",
       icon: UserGroupIcon,
       path: "/hrms",
+    },
+
+    {
+      name: "Payroll",
+      icon: BanknotesIcon,
+      path: "/payroll",
     },
 
     {
