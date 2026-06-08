@@ -19,6 +19,8 @@ from routes.workflow import workflow_bp
 from routes.dashboard import dashboard_bp
 from routes.employees import employees_bp
 from routes.attendance import attendance_bp
+from routes.leaves import leave_bp
+
 
 def create_app():
     app = Flask(__name__)
@@ -44,7 +46,10 @@ def create_app():
     attendance_bp,
     url_prefix="/api/attendance"
 )
-    
+    app.register_blueprint(
+    leave_bp,
+    url_prefix="/api/leaves"
+)
 
 
     # JWT

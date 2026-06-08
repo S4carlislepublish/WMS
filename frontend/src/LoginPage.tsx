@@ -1,198 +1,262 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
-import { useAuthStore } from './store/authStore';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import toast from "react-hot-toast";
+import logo from "./images/s.png"
+import { useAuthStore } from "./store/authStore";
 import {
   LockClosedIcon,
   UserCircleIcon,
   EyeIcon,
   EyeSlashIcon,
-} from '@heroicons/react/24/solid';
+} from "@heroicons/react/24/solid";
+import bg from "../src/images/hero-bg.jpg";
+// import logo from "../src/images/s4carlisle-logo.png"; // optional
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuthStore();
+
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    email: "",
+    password: "",
   });
+
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
+    setLoading(true);
 
-  setLoading(true);
+    try {
+      const response = await login(formData.email, formData.password);
+      const role = response.role || "";
 
-  try {
+      const employeeRoles = ["Pre-Editing", "Copywriting", "QA"];
+      const isEmployee = employeeRoles.includes(role);
 
-    const response = await login(
-      formData.email,
-      formData.password
-    );
-
-    const role = response.role || "";
-
-    const employeeRoles = [
-      "Pre-Editing",
-      "Copywriting",
-      "QA"
-    ];
-
-    const isEmployee =
-      employeeRoles.includes(role);
-
-    // Employee First Login
-    if (
-      isEmployee &&
-      (
-        response.profile_completed === false ||
-        response.is_first_login === true
-      )
-    ) {
-
-      navigate("/complete-profile");
-
+      if (
+        isEmployee &&
+        (response.profile_completed === false || response.is_first_login === true)
+      ) {
+        navigate("/complete-profile");
+      } else if (isEmployee) {
+        navigate("/employee-dashboard");
+      } else if (role === "HR") {
+        navigate("/dashboard");
+      } else if (role === "Admin" || role === "Super Admin") {
+        navigate("/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.response?.data?.error || "Login failed");
+    } finally {
+      setLoading(false);
     }
-
-    // Employee Dashboard
-    else if (isEmployee) {
-
-      navigate("/employee-dashboard");
-
-    }
-
-    // HR Dashboard
-    else if (
-      role === "HR"
-    ) {
-
-      navigate("/dashboard");
-
-    }
-
-    // Admin Dashboard
-    else if (
-      role === "Admin" ||
-      role === "Super Admin"
-    ) {
-
-      navigate("/dashboard");
-
-    }
-
-    // Default Dashboard
-    else {
-
-      navigate("/dashboard");
-
-    }
-
-  } catch (error: any) {
-
-    console.error(error);
-
-    toast.error(
-      error.response?.data?.error ||
-      "Login failed"
-    );
-
-  } finally {
-
-    setLoading(false);
-
-  }
-};
-
-const [showCheckIn, setShowCheckIn] = useState(false);
-const [loggedUser, setLoggedUser] = useState<any>(null);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-md w-full bg-gray-800 rounded-lg shadow-2xl p-8"
-      >
-        <div className="text-center mb-8">
-          <div className="mx-auto h-16 w-16 bg-white rounded-full flex items-center justify-center mb-4">
-            <UserCircleIcon className="h-10 w-10 text-gray-900" />
-          </div>
-          <h1 className="text-3xl font-bold text-white">Workflow Management System</h1>
-          <p className="text-gray-400 mt-2">Enterprise Publishing Platform</p>
+    <div className="min-h-screen flex flex-col bg-[#f5f5f5] overflow-hidden">
+      {/* Header */}
+      <header className="w-full bg-white border-b border-gray-200">
+        <div className="max-w-[1600px] mx-auto h-[86px] px-8 flex items-center justify-between">
+          <div className="flex items-center gap-5">
+  {/* Logo */}
+  <img
+    src={logo}
+    alt="S4 Carlisle Publishing Services"
+    className="w-[140px] h-auto object-contain"
+    draggable={false}
+  />
+
+  {/* PrepOps Text */}
+  <h1
+    className="text-[52px] font-bold leading-none"
+    style={{ fontFamily: "Georgia, serif" }}
+  >
+    <span className="text-[#2B609E]">S</span>
+      <span className="text-[#FF0000]">4</span>
+      <span className="text-[#2B609E]">C</span>
+      <span className="text-[#F5975B]">Ops</span>
+  </h1>
+</div>
+        
+
+          <p className="hidden md:block text-[12px] font-semibold tracking-[0.18em] uppercase text-[#a7afbd]">
+            Your partner in publishing excellence
+          </p>
+        </div>
+      </header>
+
+      {/* Main */}
+      <main className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+          {/* Hero section */}
+          <section className="relative lg:w-[74%] min-h-[520px] lg:min-h-0 overflow-hidden">
+            <img
+              src={bg}
+              alt="PrepOps hero"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+
+            {/* overlays */}
+            <div className="absolute inset-0 bg-[rgba(18,26,52,0.58)]" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#1a2244]/65 via-[#4e3c33]/20 to-[#ea9b5c]/35" />
+
+            <div className="relative z-10 h-full flex items-center">
+              <div className="px-8 sm:px-12 lg:px-10 xl:px-12 max-w-[760px] pt-10 lg:pt-0">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#e6b85d]/40 bg-[#c89f3d]/15 px-5 py-2 mb-7 backdrop-blur-sm">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#e1b84f]" />
+                  <span className="text-[13px] font-semibold tracking-[0.08em] uppercase text-[#efc765]">
+                    Live Production System
+                  </span>
+                </div>
+
+                <h2 className="font-serif font-semibold text-white leading-[0.95] text-[52px] sm:text-[70px] lg:text-[72px] xl:text-[78px]">
+                  Intelligent
+                  <span className="block text-[#efc15b]">Pre-Production Hub</span>
+                </h2>
+
+                <p className="mt-7 max-w-[620px] text-[20px] leading-[1.5] text-white">
+                  Automate pre-editing, mechanical editing, reference validation,
+                  alt-text generation, and more — with real-time SLA visibility
+                  and AI-assisted QA across every imprint.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Login panel */}
+          <aside className="lg:w-[26%] bg-[#f4f5f7] flex items-center justify-center px-8 py-10">
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45 }}
+              className="w-full max-w-[360px]"
+            >
+              <div className="mb-10">
+                <h3 className="text-[24px] sm:text-[26px] font-bold font-serif text-[#22345a]">
+                  Welcome to S4COps
+                </h3>
+                <p className="mt-2 text-[15px] text-[#8a93a3]">
+                  Sign in to your S4COps workspace
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label className="block mb-2 text-[15px] font-semibold text-[#334155]">
+                    Username
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <UserCircleIcon className="h-5 w-5 text-[#98a2b3]" />
+                    </div>
+
+                    <input
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      placeholder="username"
+                      className="w-full h-[52px] rounded-[10px] border border-[#d8dee8] bg-[#e9edf3] pl-11 pr-4 text-[#1f2937] placeholder:text-[#9ca3af] outline-none focus:ring-2 focus:ring-[#efac7f] focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block mb-2 text-[15px] font-semibold text-[#334155]">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <LockClosedIcon className="h-5 w-5 text-[#98a2b3]" />
+                    </div>
+
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      placeholder="••••••••"
+                      className="w-full h-[52px] rounded-[10px] border border-[#d8dee8] bg-[#e9edf3] pl-11 pr-12 text-[#1f2937] placeholder:text-[#9ca3af] outline-none focus:ring-2 focus:ring-[#efac7f] focus:border-transparent"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                    >
+                      {showPassword ? (
+                        <EyeSlashIcon className="h-5 w-5 text-[#98a2b3] hover:text-[#475467]" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5 text-[#98a2b3] hover:text-[#475467]" />
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="mt-2 text-right">
+                    <button
+                      type="button"
+                      className="text-[14px] font-medium text-[#e3a08a] hover:text-[#d17d62]"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="mt-3 w-full h-[54px] rounded-[12px] bg-gradient-to-r from-[#ef9f96] to-[#e9ae68] text-white text-[16px] font-semibold shadow-sm transition hover:brightness-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Signing In..." : "Sign In \u2192"}
+                </button>
+              </form>
+
+              <p className="mt-5 text-center text-[15px] text-[#9aa1ad]">
+                Don&apos;t have an account?{" "}
+                <span className="font-semibold text-[#d98167]">Register here</span>
+              </p>
+            </motion.div>
+          </aside>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <LockClosedIcon className="h-5 w-5 text-gray-400" />
+
+        {/* Bottom footer */}
+        <footer className="bg-[#1c2c5a] text-white">
+          <div className="max-w-[1600px] mx-auto px-6 lg:px-8 py-3">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-[13px]">
+              <p className="text-[#b8c0d4]">
+                © 2026{" "}
+                <span className="font-semibold text-[#f0b44e]">
+                  S4Carlisle Publishing Services Pvt Ltd.
+                </span>{" "}
+                All rights reserved.
+              </p>
+
+              <div className="flex items-center gap-6 text-[#b8c0d4]">
+                <button type="button" className="hover:text-white">
+                  Privacy Policy
+                </button>
+                <button type="button" className="hover:text-white">
+                  Terms of Use
+                </button>
+                <button type="button" className="hover:text-white">
+                  Support
+                </button>
               </div>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
-                placeholder="Enter your email"
-              />
             </div>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Password
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <LockClosedIcon className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-  type={showPassword ? "text" : "password"}
-  required
-  value={formData.password}
-  onChange={(e) =>
-    setFormData({
-      ...formData,
-      password: e.target.value,
-    })
-  }
-  className="w-full pl-10 pr-12 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
-  placeholder="Enter your password"
-/>
-
-<button
-  type="button"
-  onClick={() => setShowPassword(!showPassword)}
-  className="absolute inset-y-0 right-0 pr-3 flex items-center"
->
-  {showPassword ? (
-    <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-white" />
-  ) : (
-    <EyeIcon className="h-5 w-5 text-gray-400 hover:text-white" />
-  )}
-</button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-white text-gray-900 font-semibold py-3 px-4 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        <p className="text-center text-gray-400 text-sm mt-6">
-          No signup available. Contact Admin to create an account.
-        </p>
-      </motion.div>
+        </footer>
+      </main>
     </div>
   );
 };

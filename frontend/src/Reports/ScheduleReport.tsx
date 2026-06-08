@@ -406,7 +406,7 @@ const ScheduleReport = () => {
                 </span>
               </div>
 
-              <button className="inline-flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700">
+              <button className="inline-flex items-center gap-2 rounded-xl bg-[#4C5C68] px-4 py-2.5 text-sm font-medium text-white ">
                 <RefreshCw size={16} />
                 Refresh
               </button>
@@ -434,7 +434,7 @@ const ScheduleReport = () => {
                 Reset
               </button>
 
-              <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700">
+              <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#4C5C68] px-4 py-2.5 text-sm font-medium text-white">
                 <Filter size={16} />
                 Apply Filters
               </button>
@@ -674,7 +674,7 @@ const ScheduleReport = () => {
         <div className="flex flex-wrap gap-3">
           <button
             onClick={handleExportToExcel}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#4C5C68] px-4 py-2.5 text-sm font-medium text-white "
           >
             <Download size={16} />
             Export To Excel
@@ -682,7 +682,7 @@ const ScheduleReport = () => {
 
           <button
             onClick={handleExportPDF}
-            className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#4C5C68] px-4 py-2.5 text-sm font-medium text-white"
           >
             <FileText size={16} />
             Export PDF
@@ -690,7 +690,7 @@ const ScheduleReport = () => {
 
           <button
             onClick={handlePrint}
-            className="ml-auto inline-flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700"
+            className="ml-auto inline-flex items-center gap-2 rounded-xl bg-[#4C5C68] px-4 py-2.5 text-sm font-medium text-white"
           >
             <Printer size={16} />
             Print

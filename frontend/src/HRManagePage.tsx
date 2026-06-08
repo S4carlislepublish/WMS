@@ -8,7 +8,7 @@ import {
 
 const theme = {
   bg: "#F8FAFF", surface: "#FFFFFF", surface2: "#F0F4FF", border: "#DCDEF5",
-  text: "#1E293B", textMuted: "#64748B", accent: "#6366F1", green: "#10B981",
+  text: "#1E293B", textMuted: "#64748B", accent: "#1F7A8c", green: "#10B981",
   amber: "#F59E0B", red: "#EF4444", blue: "#3B82F6"
 };
 
@@ -88,8 +88,9 @@ function Panel({ children, style = {} }: any) {
 }
 
 function Btn({ children, onClick, variant = "primary" }: any) {
-  const bg = variant === "primary" ? theme.accent : "transparent";
-  const color = variant === "primary" ? "#fff" : theme.textMuted;
+const bg = variant === "primary"
+  ? "#4C5C68"
+  : "transparent";  const color = variant === "primary" ? "#fff" : theme.textMuted;
   const border = variant === "primary" ? "none" : `1px solid ${theme.border}`;
   return (
     <button onClick={onClick} style={{ background: bg, color, border, padding: "10px 16px", borderRadius: 8, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}>
@@ -108,17 +109,21 @@ export default function HRAdminDashboard() {
   const [currentEmployee, setCurrentEmployee] = useState<any>(null);
   const [teams, setTeams] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [attendance, setAttendance] = useState([]);
+  const [profileImage, setProfileImage] = useState(null);
 
   const fetchAttendance = async () => {
   try {
     const response = await fetch(
-      "http://localhost:5000/api/attendance/"
+      "http://10.1.8.103:5000/api/attendance/"
     );
 
     const data = await response.json();
 
     setAttendance(data || []);
+    console.log("Attendance API Data:", data);
+    console.log("Attendance:", attendance);
   } catch (error) {
     console.error("Attendance Error:", error);
   }
@@ -137,6 +142,7 @@ useEffect(() => {
   fetchTeams();
   fetchRoles();
 }, []);
+
 
 const fetchRoles = async () => {
   try {
@@ -197,12 +203,61 @@ const fetchTeams = async () => {
     emergency_contact_number: ""
   });
 
-  const counts = useMemo(() => ({
-    total: employees.length,
-    active: employees.filter(e => e.status === "active").length,
-    onLeave: employees.filter(e => e.status === "on_leave").length,
-    pendingLeaves: leaves.filter(l => l.status === "pending").length,
-  }), [employees, leaves]);
+const counts = useMemo(() => {
+
+  const employeeUsers = employees.filter(
+    (emp) => {
+      const role = emp.role?.toLowerCase() || "";
+
+      return (
+        role !== "hr" &&
+        role !== "admin" &&
+        role !== "manager" &&
+        role !== "project manager"
+      );
+    }
+  );
+
+  const today = new Date()
+    .toISOString()
+    .split("T")[0];
+
+  const presentEmployeeIds = [
+    ...new Set(
+      attendance
+        .filter(
+          (att) =>
+            att.attendance_date === today
+        )
+        .map(
+          (att) => att.user_id
+        )
+    ),
+  ];
+
+  const activeEmployees =
+    employeeUsers.filter((emp) =>
+      presentEmployeeIds.includes(
+        emp.user_id
+      )
+    ).length;
+
+  const onLeaveEmployees =
+    employeeUsers.length -
+    activeEmployees;
+
+  return {
+    total: employeeUsers.length,
+    active: activeEmployees,
+    onLeave:
+      onLeaveEmployees > 0
+        ? onLeaveEmployees
+        : 0,
+    pendingLeaves:
+      leaves?.length || 0,
+  };
+
+}, [employees, attendance, leaves]);
 
 const filteredEmps = employees.filter((e) =>
   `${e.first_name || ""} ${e.last_name || ""}`
@@ -241,24 +296,104 @@ const filteredEmps = employees.filter((e) =>
   const handleAddEmployee = async () => {
     // Validate mandatory fields
     if (!newEmp.employee_id || !newEmp.first_name || !newEmp.last_name || !newEmp.email || !newEmp.phone || !newEmp.department || !newEmp.role || !newEmp.joining_date || !newEmp.salary) {
-      alert("Please fill all mandatory fields (*)");
-      return;
+        return;
     }
 
     try {
-      const response = await fetch("http://10.1.8.103:5000/api/employees/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newEmp)
-      });
+      const formData = new FormData();
+
+formData.append(
+  "employee_id",
+  newEmp.employee_id
+);
+
+formData.append(
+  "first_name",
+  newEmp.first_name
+);
+
+formData.append(
+  "last_name",
+  newEmp.last_name
+);
+
+formData.append(
+  "email",
+  newEmp.email
+);
+
+formData.append(
+  "phone",
+  newEmp.phone
+);
+
+formData.append(
+  "department",
+  newEmp.department
+);
+
+formData.append(
+  "designation",
+  newEmp.designation
+);
+
+formData.append(
+  "role",
+  newEmp.role
+);
+
+formData.append(
+  "reporting_manager",
+  newEmp.reporting_manager
+);
+
+formData.append(
+  "joining_date",
+  newEmp.joining_date
+);
+
+formData.append(
+  "salary",
+  newEmp.salary
+);
+
+formData.append(
+  "status",
+  newEmp.status
+);
+
+if (profileImage) {
+  formData.append(
+    "profile_image",
+    profileImage
+  );
+}
+
+const response = await fetch(
+  "http://10.1.8.103:5000/api/employees/",
+  {
+    method: "POST",
+    body: formData
+  }
+);
 
       const data = await response.json();
       alert(data.message || "Employee Added Successfully");
       setAddEmpOpen(false);
       setNewEmp({
-        employee_id: "", first_name: "", last_name: "", email: "", phone: "",
-        department: "", designation: "", role: "", joining_date: "", salary: "", status: "Active"
-      });
+  employee_id: "",
+  first_name: "",
+  last_name: "",
+  email: "",
+  phone: "",
+  department: "",
+  designation: "",
+  role: "",
+  reporting_manager: "",
+  joining_date: "",
+  salary: "",
+  status: "Active"
+});
     } catch (error) {
       console.error(error);
       alert("Error adding employee");
@@ -269,8 +404,9 @@ const filteredEmps = employees.filter((e) =>
     if (!currentEmployee) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/employees/${currentEmployee.id}/profile`, {
-        method: "PUT",
+      const response = await fetch(
+  `http://10.1.8.103:5000/api/employees/${currentEmployee.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profileData)
       });
@@ -330,12 +466,14 @@ const [formData, setFormData] = useState({
 const fetchEmployees = async () => {
   try {
     const response = await fetch(
-      "http://localhost:5000/api/employees/"
+      "http://10.1.8.103:5000/api/employees/"
     );
 
     const data = await response.json();
 
     setEmployees(data || []);
+    console.log("Employees API:", data);
+    console.log(data[0]);
   } catch (error) {
     console.error(error);
   }
@@ -345,13 +483,14 @@ useEffect(() => {
   fetchEmployees();
 }, []);
 
+
   return (
     <div style={{ minHeight: "100vh", background: theme.bg, fontFamily: "system-ui, -apple-system, sans-serif" }}>
       {/* ========== HEADER ========== */}
       <header style={{ position: "sticky", top: 0, zIndex: 40, background: theme.surface, borderBottom: `1px solid ${theme.border}` }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: `linear-gradient(135deg, ${theme.accent}, #4F46E5)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#1F748C', display: "flex", alignItems: "center", justifyContent: "center" }}>
               <BuildingOfficeIcon style={{ width: 22, height: 22, color: "#fff" }} />
             </div>
             <div>
@@ -360,7 +499,7 @@ useEffect(() => {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Btn onClick={() => setAddEmpOpen(true)}><PlusIcon style={{ width: 14, height: 14 }} /> Add Employee</Btn>
+            <Btn onClick={() => setAddEmpOpen(true)} style={{  background: "#4C5C68"}}><PlusIcon style={{ width: 14, height: 14 }} /> Add Employee</Btn>
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: theme.surface2, borderRadius: 10, border: `1px solid ${theme.border}` }}>
               <Avatar initials="HR" size={28} />
               <div>
@@ -409,86 +548,579 @@ useEffect(() => {
         {nav === "dashboard" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             {/* Stats Cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20 }}>
-              <Panel style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontSize: 12, color: theme.textMuted, fontWeight: 600 }}>Total Employees</div>
-                  <div style={{ fontSize: 32, fontWeight: 800, marginTop: 4 }}>{counts.total}</div>
-                  <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>All departments</div>
-                </div>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: `${theme.accent}18`, color: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>👥</div>
-              </Panel>
-              
-              <Panel style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontSize: 12, color: theme.textMuted, fontWeight: 600 }}>Active Now</div>
-                  <div style={{ fontSize: 32, fontWeight: 800, marginTop: 4, color: theme.green }}>{counts.active}</div>
-                  <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>Working today</div>
-                </div>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: "#D1FAE5", color: theme.green, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>✓</div>
-              </Panel>
-              
-              <Panel style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontSize: 12, color: theme.textMuted, fontWeight: 600 }}>On Leave</div>
-                  <div style={{ fontSize: 32, fontWeight: 800, marginTop: 4, color: theme.blue }}>{counts.onLeave}</div>
-                  <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>Away from work</div>
-                </div>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: "#DBEAFE", color: theme.blue, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>🏖️</div>
-              </Panel>
-              
-              <Panel style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ fontSize: 12, color: theme.textMuted, fontWeight: 600 }}>Pending Leaves</div>
-                  <div style={{ fontSize: 32, fontWeight: 800, marginTop: 4, color: theme.amber }}>{counts.pendingLeaves}</div>
-                  <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>Need approval</div>
-                </div>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: "#FEF3C7", color: theme.amber, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>⏳</div>
-              </Panel>
-            </div>
+            <div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    gap: 20,
+    marginBottom: 24,
+  }}
+>
+  <Panel
+    style={{
+      padding: 24,
+      borderLeft: "4px solid #46494C",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+    }}
+  >
+    <div
+      style={{
+        fontSize: 12,
+        fontWeight: 600,
+        color: "#64748B",
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+      }}
+    >
+      Total Employees
+    </div>
+
+    <div
+      style={{
+        fontSize: 38,
+        fontWeight: 800,
+        color: "#46494C",
+        marginTop: 12,
+      }}
+    >
+      {counts.total}
+    </div>
+
+    <div
+      style={{
+        marginTop: 8,
+        fontSize: 13,
+        color: "#94A3B8",
+      }}
+    >
+      All departments
+    </div>
+  </Panel>
+
+  <Panel
+    style={{
+      padding: 24,
+      borderLeft: "4px solid #46494C",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+    }}
+  >
+    <div
+      style={{
+        fontSize: 12,
+        fontWeight: 600,
+        color: "#64748B",
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+      }}
+    >
+      Active Today
+    </div>
+
+    <div
+      style={{
+        fontSize: 38,
+        fontWeight: 800,
+        color: "#46494C",
+        marginTop: 12,
+      }}
+    >
+      {counts.active}
+    </div>
+
+    <div
+      style={{
+        marginTop: 8,
+        fontSize: 13,
+        color: "#94A3B8",
+      }}
+    >
+      Working today
+    </div>
+  </Panel>
+
+  <Panel
+    style={{
+      padding: 24,
+      borderLeft: "4px solid #46494C",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+    }}
+  >
+    <div
+      style={{
+        fontSize: 12,
+        fontWeight: 600,
+        color: "#64748B",
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+      }}
+    >
+      On Leave
+    </div>
+
+    <div
+      style={{
+        fontSize: 38,
+        fontWeight: 800,
+        color: "#46494C",
+        marginTop: 12,
+      }}
+    >
+      {counts.onLeave}
+    </div>
+
+    <div
+      style={{
+        marginTop: 8,
+        fontSize: 13,
+        color: "#94A3B8",
+      }}
+    >
+      Away from work
+    </div>
+  </Panel>
+
+  <Panel
+    style={{
+      padding: 24,
+      borderLeft: "4px solid #46494C",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+    }}
+  >
+    <div
+      style={{
+        fontSize: 12,
+        fontWeight: 600,
+        color: "#64748B",
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+      }}
+    >
+      Pending Leaves
+    </div>
+
+    <div
+      style={{
+        fontSize: 38,
+        fontWeight: 800,
+        color: "#46494C",
+        marginTop: 12,
+      }}
+    >
+      {counts.pendingLeaves}
+    </div>
+
+    <div
+      style={{
+        marginTop: 8,
+        fontSize: 13,
+        color: "#94A3B8",
+      }}
+    >
+      Need approval
+    </div>
+  </Panel>
+</div>
 
             {/* Departments */}
-            <Panel>
-              <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 16, color: theme.text }}>Department Overview</div>
-              {DEPTS.map(d => (
-                <div key={d.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: theme.surface2, borderRadius: 10, marginBottom: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 4, height: 28, background: d.color, borderRadius: 2 }} />
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 700 }}>{d.name}</div>
-                      <div style={{ fontSize: 11, color: theme.textMuted }}>Head: {d.head}</div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>{d.hc} Employees</div>
-                    <div style={{ fontSize: 11, color: theme.textMuted }}>Budget: {d.budget}</div>
-                  </div>
-                </div>
-              ))}
-            </Panel>
+        <Panel>
+  <div
+    style={{
+      fontSize: 18,
+      fontWeight: 700,
+      marginBottom: 20,
+      color: theme.text,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+    }}
+  >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+    Department Overview
+  </div>
 
-            {/* Quick Actions */}
-            <Panel>
-              <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 16 }}>Quick Actions</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-                <button onClick={() => setNav("leave")} style={{ padding: 16, background: "#FEF3C7", border: `1px solid ${theme.amber}`, borderRadius: 10, cursor: "pointer", textAlign: "center" }}>
-                  <div style={{ fontSize: 24, marginBottom: 4 }}>⏳</div>
-                  <div style={{ fontSize: 12, fontWeight: 700 }}>Review Leaves</div>
-                </button>
-                <button onClick={() => setNav("directory")} style={{ padding: 16, background: `${theme.accent}18`, border: `1px solid ${theme.accent}`, borderRadius: 10, cursor: "pointer", textAlign: "center" }}>
-                  <div style={{ fontSize: 24, marginBottom: 4 }}>👥</div>
-                  <div style={{ fontSize: 12, fontWeight: 700 }}>View Directory</div>
-                </button>
-                <button onClick={() => setNav("attendance")} style={{ padding: 16, background: "#D1FAE5", border: `1px solid ${theme.green}`, borderRadius: 10, cursor: "pointer", textAlign: "center" }}>
-                  <div style={{ fontSize: 24, marginBottom: 4 }}>🕐</div>
-                  <div style={{ fontSize: 12, fontWeight: 700 }}>Check Attendance</div>
-                </button>
-                <button onClick={() => setAddEmpOpen(true)} style={{ padding: 16, background: "#DBEAFE", border: `1px solid ${theme.blue}`, borderRadius: 10, cursor: "pointer", textAlign: "center" }}>
-                  <div style={{ fontSize: 24, marginBottom: 4 }}>➕</div>
-                  <div style={{ fontSize: 12, fontWeight: 700 }}>Add Employee</div>
-                </button>
+  {[...new Set(employees.map((emp) => emp.department))]
+    .filter(Boolean)
+    .map((dept) => {
+      const departmentEmployees = employees.filter(
+  (emp) => emp.department === dept
+);
+
+const totalDepartmentSalary = departmentEmployees.reduce(
+  (sum, emp) => sum + (Number(emp.salary) || 0),
+  0
+);
+      const empCount = employees.filter((emp) => emp.department === dept).length;
+      const isActive = selectedDepartment === dept;
+      
+      return (
+        <div key={dept}>
+          {/* Department Card */}
+          <div
+            onClick={() => setSelectedDepartment(isActive ? null : dept)}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "14px 16px",
+              background: isActive ? '#4362EE08' : theme.surface2,
+              border: isActive ? '2px solid #4362EE' : '2px solid transparent',
+              borderRadius: 12,
+              marginBottom: 10,
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              boxShadow: isActive ? '0 2px 8px rgba(67, 98, 238, 0.15)' : 'none',
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.backgroundColor = '#f0f0f0';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.backgroundColor = theme.surface2;
+              }
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: '#1F7A8C',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: 14,
+                }}
+              >
+                {dept.charAt(0).toUpperCase()}
               </div>
-            </Panel>
+              <div>
+                <div
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: theme.text,
+                  }}
+                >
+                  {dept}
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: theme.textMuted,
+                  }}
+                >
+                  Department
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontWeight: 600,
+              }}
+            >
+              <div
+                style={{
+                  background: '#4362EE15',
+                  color: '#4362EE',
+                  padding: '5px 10px',
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                {empCount}
+              </div>
+              <span style={{ color: theme.textMuted, fontSize: 13 }}>
+                {empCount === 1 ? 'Employee' : 'Employees'}
+              </span>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 20 20"
+                fill="none"
+                style={{
+                  transform: isActive ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s ease',
+                  color: theme.textMuted,
+                }}
+              >
+                <path
+                  d="M5 7.5L10 12.5L15 7.5"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* Employee Table - Shows RIGHT BELOW the selected department */}
+          {isActive && (
+            <div
+              style={{
+                marginTop: 10,
+                marginLeft: 16,
+                marginRight: 16,
+                marginBottom: 10,
+                animation: 'fadeIn 0.3s ease',
+              }}
+            >
+              <div
+  style={{
+    fontSize: 14,
+    fontWeight: 600,
+    marginBottom: 12,
+    color: theme.text,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  }}
+>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4362EE" strokeWidth="2">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+
+  {dept} Employees
+
+  <span
+    style={{
+      background: "#1F7A8C",
+      color: "white",
+      padding: "2px 6px",
+      borderRadius: 8,
+      fontSize: 11,
+      fontWeight: 600,
+    }}
+  >
+    {empCount}
+  </span>
+
+  <span
+    style={{
+      background: "#16A34A",
+      color: "white",
+      padding: "2px 8px",
+      borderRadius: 8,
+      fontSize: 11,
+      fontWeight: 600,
+    }}
+  >
+    Total Salary: ₹{totalDepartmentSalary.toLocaleString()}
+  </span>
+</div>
+              <div
+                style={{
+                  overflow: 'auto',
+                  borderRadius: 10,
+                  border: `1px solid ${theme.border}`,
+                  background: theme.surface || '#ffffff',
+                }}
+              >
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    minWidth: 500,
+                  }}
+                >
+                  <thead>
+                    <tr
+                      style={{
+                        background: theme.surface2,
+                        borderBottom: `2px solid ${theme.border}`,
+                      }}
+                    >
+                      <th
+                        style={{
+                          padding: "10px 12px",
+                          textAlign: "left",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: theme.textMuted,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        Employee Name
+                      </th>
+                      <th
+                        style={{
+                          padding: "10px 12px",
+                          textAlign: "left",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: theme.textMuted,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        Role
+                      </th>
+                      <th
+                        style={{
+                          padding: "10px 12px",
+                          textAlign: "left",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: theme.textMuted,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        Designation
+                      </th>
+                      <th
+                        style={{
+                          padding: "10px 12px",
+                          textAlign: "left",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: theme.textMuted,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        Reporting Manager
+                      </th>
+                      <th
+  style={{
+    padding: "10px 12px",
+    textAlign: "left",
+    fontSize: 11,
+    fontWeight: 600,
+    color: theme.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  }}
+>
+  Salary
+</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {employees
+                      .filter((emp) => emp.department === dept)
+                      .map((emp, index) => (
+                        <tr
+                          key={emp.id}
+                          style={{
+                            borderBottom: `1px solid ${theme.border}`,
+                            background: index % 2 === 0 ? '#ffffff' : '#fafafa',
+                            transition: 'background 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#4362EE05';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = index % 2 === 0 ? '#ffffff' : '#fafafa';
+                          }}
+                        >
+                          <td
+                            style={{
+                              padding: "10px 12px",
+                              fontSize: 13,
+                              fontWeight: 500,
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div
+                                style={{
+                                  width: 26,
+                                  height: 26,
+                                  borderRadius: 6,
+                                  background: '#1F7A8C',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'white',
+                                  fontSize: 10,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {emp.first_name?.charAt(0)}{emp.last_name?.charAt(0)}
+                              </div>
+                              {emp.first_name} {emp.last_name}
+                            </div>
+                          </td>
+                          <td style={{ padding: "10px 12px", fontSize: 12 }}>
+                            {emp.role || "-"}
+                          </td>
+                          <td style={{ padding: "10px 12px", fontSize: 12 }}>
+                            {emp.designation || "-"}
+                          </td>
+                          <td style={{ padding: "10px 12px", fontSize: 12 }}>
+                            {emp.reporting_manager || "-"}
+                          </td>
+                          <td
+  style={{
+    padding: "10px 12px",
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#16A34A",
+  }}
+>
+  ₹{Number(emp.salary || 0).toLocaleString()}
+</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {empCount === 0 && (
+                <div
+                  style={{
+                    textAlign: 'center',
+                    padding: 30,
+                    color: theme.textMuted,
+                    borderRadius: 10,
+                    border: `1px solid ${theme.border}`,
+                    background: theme.background || '#ffffff',
+                  }}
+                >
+                  <div>No employees found in this department</div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    })}
+
+  <style>{`
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-5px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  `}</style>
+</Panel>
+
           </div>
         )}
 
@@ -631,7 +1263,7 @@ useEffect(() => {
                     width: 36,
                     height: 36,
                     borderRadius: 8,
-                    background: `linear-gradient(135deg, #667eea 0%, #764ba2 100%)`,
+                    background: '#1F7A8C',
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -827,7 +1459,7 @@ useEffect(() => {
       </td>
 
       <td style={{ padding: "14px 12px" }}>
-        {at.working_hours || "-"}
+        {at.total_hours || "-"}
       </td>
 
       <td style={{ padding: "14px 12px" }}>
@@ -1191,7 +1823,7 @@ useEffect(() => {
         </button>
       </div>
 
-      <div style={{ padding: 26 }}>
+      <form style={{ padding: 26 }}>
         <div
           style={{
             display: "grid",
@@ -1202,6 +1834,7 @@ useEffect(() => {
           <div>
             <label style={labelStyle}>EMPLOYEE ID *</label>
             <input
+            required
               value={newEmp.employee_id}
               onChange={(e) =>
                 setNewEmp({ ...newEmp, employee_id: e.target.value })
@@ -1214,6 +1847,7 @@ useEffect(() => {
           <div>
             <label style={labelStyle}>FIRST NAME *</label>
             <input
+            required
               value={newEmp.first_name}
               onChange={(e) =>
                 setNewEmp({ ...newEmp, first_name: e.target.value })
@@ -1226,6 +1860,7 @@ useEffect(() => {
           <div>
             <label style={labelStyle}>LAST NAME *</label>
             <input
+              required
               value={newEmp.last_name}
               onChange={(e) =>
                 setNewEmp({ ...newEmp, last_name: e.target.value })
@@ -1238,6 +1873,7 @@ useEffect(() => {
           <div>
             <label style={labelStyle}>EMAIL *</label>
             <input
+            required
               type="email"
               value={newEmp.email}
               onChange={(e) => setNewEmp({ ...newEmp, email: e.target.value })}
@@ -1249,6 +1885,7 @@ useEffect(() => {
           <div>
             <label style={labelStyle}>PHONE *</label>
             <input
+            required
               value={newEmp.phone}
               onChange={(e) => setNewEmp({ ...newEmp, phone: e.target.value })}
               placeholder="e.g., +91 9876543210"
@@ -1259,6 +1896,7 @@ useEffect(() => {
           <div>
             <label style={labelStyle}>DEPARTMENT *</label>
             <select
+            required
               value={newEmp.department}
               onChange={(e) =>
                 setNewEmp({ ...newEmp, department: e.target.value })
@@ -1278,6 +1916,7 @@ useEffect(() => {
           <div>
             <label style={labelStyle}>Designation *</label>
             <select
+            required
   value={newEmp.designation}
   onChange={(e) =>
     setNewEmp({
@@ -1296,12 +1935,13 @@ useEffect(() => {
   ))}
 </select>
           </div>
-          <div>
+      <div>
   <label style={labelStyle}>
     REPORTING MANAGER *
   </label>
 
   <select
+  required
     value={newEmp.reporting_manager}
     onChange={(e) =>
       setNewEmp({
@@ -1318,9 +1958,9 @@ useEffect(() => {
     {employees?.map((emp) => (
       <option
         key={emp.id}
-        value={emp.name}
+        value={`${emp.first_name} ${emp.last_name}`}
       >
-        {emp.name}
+        {emp.first_name} {emp.last_name}
       </option>
     ))}
   </select>
@@ -1329,6 +1969,7 @@ useEffect(() => {
           <div>
             <label style={labelStyle}>Role *</label>
             <select
+              required
               value={newEmp.role}
               onChange={(e) => setNewEmp({ ...newEmp, role: e.target.value })}
               style={inputStyle}
@@ -1345,6 +1986,7 @@ useEffect(() => {
           <div>
             <label style={labelStyle}>JOINING DATE *</label>
             <input
+            required
               type="date"
               value={newEmp.joining_date}
               onChange={(e) =>
@@ -1357,6 +1999,7 @@ useEffect(() => {
           <div>
             <label style={labelStyle}>SALARY *</label>
             <input
+            required
               type="number"
               value={newEmp.salary}
               onChange={(e) => setNewEmp({ ...newEmp, salary: e.target.value })}
@@ -1368,6 +2011,7 @@ useEffect(() => {
           <div>
             <label style={labelStyle}>STATUS *</label>
             <select
+            required
               value={newEmp.status}
               onChange={(e) => setNewEmp({ ...newEmp, status: e.target.value })}
               style={inputStyle}
@@ -1377,6 +2021,24 @@ useEffect(() => {
               <option value="On Leave">On Leave</option>
             </select>
           </div>
+
+  <div>
+  <label style={labelStyle}>
+    PROFILE IMAGE
+  </label>
+
+  <input
+  required
+    type="file"
+    accept="image/*"
+    onChange={(e) =>
+      setProfileImage(
+        e.target.files[0]
+      )
+    }
+    style={inputStyle}
+  />
+</div>
         </div>
 
         <div
@@ -1408,7 +2070,7 @@ useEffect(() => {
             onClick={handleAddEmployee}
             style={{
               padding: "12px 20px",
-              background: "linear-gradient(135deg, #6366F1, #4F46E5)",
+              background: "#4C5C68",
               color: "#fff",
               border: "none",
               borderRadius: 12,
@@ -1421,7 +2083,7 @@ useEffect(() => {
             Add Employee
           </button>
         </div>
-      </div>
+      </form>
     </div>
   </div>
 )}

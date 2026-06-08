@@ -269,6 +269,11 @@ if (user?.role === "HR") {
 
   const isDesktop = typeof window !== "undefined" && window.innerWidth >= 1024;
 
+  const employeeId = localStorage.getItem("employee_id");
+
+const profileImageUrl =
+  `http://10.1.8.103:5000/api/employees/image/${employeeId}`;
+
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Mobile Header */}
@@ -396,9 +401,27 @@ if (user?.role === "HR") {
               <div className="absolute bottom-0 left-0 right-0 border-t border-gray-700 bg-gray-800 p-4">
                 <div className="mb-4 flex items-center">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white">
-                    <span className="text-sm font-bold text-gray-900">
-                      {user?.full_name?.charAt(0)}
-                    </span>
+                    <img
+  src={profileImageUrl}
+  alt="Profile"
+  className="w-10 h-10 rounded-full object-cover"
+  onError={(e) => {
+    e.currentTarget.style.display = "none";
+
+    const fallback =
+      e.currentTarget.nextElementSibling as HTMLElement;
+
+    if (fallback) {
+      fallback.style.display = "flex";
+    }
+  }}
+/>
+
+<div
+  className="w-10 h-10 rounded-full bg-white text-black font-semibold items-center justify-center hidden"
+>
+  {user?.full_name?.charAt(0)?.toUpperCase()}
+</div>
                   </div>
                   <div className="ml-3 flex-1 overflow-hidden">
                     <p className="truncate text-sm font-medium text-white">{user?.full_name}</p>
@@ -422,159 +445,7 @@ if (user?.role === "HR") {
       </div>
 
       {/* AI Assistant Floating Button */}
-      <div
-  className="
-    fixed
-    bottom-[25px]
-    right-[15px]
-    z-50
-    cursor-pointer
-    hover:scale-110
-    transition-all
-    duration-300
-  "
-  onClick={() => setShowAI(true)}
->
-  <Lottie
-    animationData={aiAnimation}
-    loop
-    className="h-36 w-36"
-  />
-</div>
-
-      {/* AI Chat Popup */}
-      <AnimatePresence>
-        {showAI && (
-          <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.9 }}
-            transition={{ duration: 0.25 }}
-            className="fixed bottom-24 right-6 z-50 w-[420px] max-w-[90vw] rounded-3xl border border-gray-700 bg-gray-800 shadow-2xl overflow-hidden"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-gray-700 bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                  <ChatBubbleLeftRightIcon className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white">🤖 WMS AI Assistant</h3>
-                  <p className="text-xs text-white/80">Always here to help • Online</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowAI(false)}
-                className="rounded-lg p-1 text-white/80 hover:bg-white/10 hover:text-white transition-colors"
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Chat Messages Area */}
-            <div className="h-[400px] overflow-y-auto bg-gray-900/50 p-4">
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[88%] rounded-2xl px-4 py-3 shadow-sm ${
-                        message.role === "user"
-                          ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                          : "bg-gray-700 text-gray-100"
-                      }`}
-                    >
-                      {message.role === "assistant" ? (
-                        <div className="prose prose-invert prose-sm max-w-none text-sm leading-relaxed antialiased">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {message.content}
-                          </ReactMarkdown>
-                        </div>
-                      ) : (
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                      )}
-                      <p
-                        className={`mt-1.5 text-[10px] text-right ${
-                          message.role === "user" ? "text-white/60" : "text-gray-400"
-                        }`}
-                      >
-                        {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
-
-                {/* Typing Indicator */}
-                {isTyping && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex justify-start"
-                  >
-                    <div className="rounded-2xl bg-gray-700 px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-2 w-2 animate-bounce rounded-full bg-blue-400" style={{ animationDelay: "0ms" }} />
-                        <div className="h-2 w-2 animate-bounce rounded-full bg-purple-400" style={{ animationDelay: "150ms" }} />
-                        <div className="h-2 w-2 animate-bounce rounded-full bg-pink-400" style={{ animationDelay: "300ms" }} />
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-                <div ref={chatMessagesEndRef} />
-              </div>
-            </div>
-
-            {/* Quick Action Buttons */}
-            <div className="border-t border-gray-700 bg-gray-800 p-3">
-              <div className="mb-3 flex flex-wrap gap-1.5">
-                {[
-                  { label: "📊 Overdue Projects", text: "Show me overdue projects" },
-                  { label: "👨‍💼 Workload", text: "Check employee workload" },
-                  { label: "⏳ SLA Report", text: "Generate SLA report" },
-                  { label: "🚨 Risk Projects", text: "Show risk projects" },
-                ].map((btn) => (
-                  <button
-                    key={btn.text}
-                    onClick={() => handleSendMessage(btn.text)}
-                    disabled={isTyping}
-                    className="rounded-full bg-gray-700/80 border border-gray-600/50 px-3 py-1.5 text-xs text-gray-200 hover:bg-gray-600 hover:text-white transition-colors disabled:opacity-50"
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Input Area */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Ask WMS AI anything..."
-                  className="flex-1 rounded-xl border border-gray-600 bg-gray-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500 transition-colors"
-                  disabled={isTyping}
-                />
-                <button
-                  onClick={() => handleSendMessage()}
-                  disabled={!userInput.trim() || isTyping}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                >
-                  {isTyping ? (
-                    <ArrowPathIcon className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <PaperAirplaneIcon className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      
     </div>
   );
 };

@@ -868,3 +868,367 @@ export default function HRMSDashboard() {
     </div>
   );
 }
+
+
+
+
+AI CHATBOT
+
+<div
+  className="
+    fixed
+    bottom-[25px]
+    right-[15px]
+    z-50
+    cursor-pointer
+    hover:scale-110
+    transition-all
+    duration-300
+  "
+  onClick={() => setShowAI(true)}
+>
+  <Lottie
+    animationData={aiAnimation}
+    loop
+    className="h-36 w-36"
+  />
+</div>
+
+      {/* AI Chat Popup */}
+      <AnimatePresence>
+        {showAI && (
+          <motion.div
+            initial={{ opacity: 0, y: 30, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.9 }}
+            transition={{ duration: 0.25 }}
+            className="fixed bottom-24 right-6 z-50 w-[420px] max-w-[90vw] rounded-3xl border border-gray-700 bg-gray-800 shadow-2xl overflow-hidden"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-700 bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                  <ChatBubbleLeftRightIcon className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">🤖 WMS AI Assistant</h3>
+                  <p className="text-xs text-white/80">Always here to help • Online</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAI(false)}
+                className="rounded-lg p-1 text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Chat Messages Area */}
+            <div className="h-[400px] overflow-y-auto bg-gray-900/50 p-4">
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[88%] rounded-2xl px-4 py-3 shadow-sm ${
+                        message.role === "user"
+                          ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                          : "bg-gray-700 text-gray-100"
+                      }`}
+                    >
+                      {message.role === "assistant" ? (
+                        <div className="prose prose-invert prose-sm max-w-none text-sm leading-relaxed antialiased">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {message.content}
+                          </ReactMarkdown>
+                        </div>
+                      ) : (
+                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      )}
+                      <p
+                        className={`mt-1.5 text-[10px] text-right ${
+                          message.role === "user" ? "text-white/60" : "text-gray-400"
+                        }`}
+                      >
+                        {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+
+                {/* Typing Indicator */}
+                {isTyping && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex justify-start"
+                  >
+                    <div className="rounded-2xl bg-gray-700 px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-blue-400" style={{ animationDelay: "0ms" }} />
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-purple-400" style={{ animationDelay: "150ms" }} />
+                        <div className="h-2 w-2 animate-bounce rounded-full bg-pink-400" style={{ animationDelay: "300ms" }} />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                <div ref={chatMessagesEndRef} />
+              </div>
+            </div>
+
+            {/* Quick Action Buttons */}
+            <div className="border-t border-gray-700 bg-gray-800 p-3">
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {[
+                  { label: "📊 Overdue Projects", text: "Show me overdue projects" },
+                  { label: "👨‍💼 Workload", text: "Check employee workload" },
+                  { label: "⏳ SLA Report", text: "Generate SLA report" },
+                  { label: "🚨 Risk Projects", text: "Show risk projects" },
+                ].map((btn) => (
+                  <button
+                    key={btn.text}
+                    onClick={() => handleSendMessage(btn.text)}
+                    disabled={isTyping}
+                    className="rounded-full bg-gray-700/80 border border-gray-600/50 px-3 py-1.5 text-xs text-gray-200 hover:bg-gray-600 hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Input Area */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Ask WMS AI anything..."
+                  className="flex-1 rounded-xl border border-gray-600 bg-gray-900 px-4 py-3 text-sm text-white outline-none focus:border-blue-500 transition-colors"
+                  disabled={isTyping}
+                />
+                <button
+                  onClick={() => handleSendMessage()}
+                  disabled={!userInput.trim() || isTyping}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  {isTyping ? (
+                    <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <PaperAirplaneIcon className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+
+
+
+
+      login currentPageimport React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
+import { useAuthStore } from './store/authStore';
+import {
+  LockClosedIcon,
+  UserCircleIcon,
+  EyeIcon,
+  EyeSlashIcon,
+} from '@heroicons/react/24/solid';
+
+const LoginPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { login } = useAuthStore();
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  setLoading(true);
+
+  try {
+
+    const response = await login(
+      formData.email,
+      formData.password
+    );
+
+    const role = response.role || "";
+
+    const employeeRoles = [
+      "Pre-Editing",
+      "Copywriting",
+      "QA"
+    ];
+
+    const isEmployee =
+      employeeRoles.includes(role);
+
+    // Employee First Login
+    if (
+      isEmployee &&
+      (
+        response.profile_completed === false ||
+        response.is_first_login === true
+      )
+    ) {
+
+      navigate("/complete-profile");
+
+    }
+
+    // Employee Dashboard
+    else if (isEmployee) {
+
+      navigate("/employee-dashboard");
+
+    }
+
+    // HR Dashboard
+    else if (
+      role === "HR"
+    ) {
+
+      navigate("/dashboard");
+
+    }
+
+    // Admin Dashboard
+    else if (
+      role === "Admin" ||
+      role === "Super Admin"
+    ) {
+
+      navigate("/dashboard");
+
+    }
+
+    // Default Dashboard
+    else {
+
+      navigate("/dashboard");
+
+    }
+
+  } catch (error: any) {
+
+    console.error(error);
+
+    toast.error(
+      error.response?.data?.error ||
+      "Login failed"
+    );
+
+  } finally {
+
+    setLoading(false);
+
+  }
+};
+
+const [showCheckIn, setShowCheckIn] = useState(false);
+const [loggedUser, setLoggedUser] = useState<any>(null);
+
+  return (
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="max-w-md w-full bg-gray-800 rounded-lg shadow-2xl p-8"
+      >
+        <div className="text-center mb-8">
+          <div className="mx-auto h-16 w-16 bg-white rounded-full flex items-center justify-center mb-4">
+            <UserCircleIcon className="h-10 w-10 text-gray-900" />
+          </div>
+          <h1 className="text-3xl font-bold text-white">Workflow Management System</h1>
+          <p className="text-gray-400 mt-2">Enterprise Publishing Platform</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Email Address
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <LockClosedIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+                placeholder="Enter your email"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <LockClosedIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+  type={showPassword ? "text" : "password"}
+  required
+  value={formData.password}
+  onChange={(e) =>
+    setFormData({
+      ...formData,
+      password: e.target.value,
+    })
+  }
+  className="w-full pl-10 pr-12 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent"
+  placeholder="Enter your password"
+/>
+
+<button
+  type="button"
+  onClick={() => setShowPassword(!showPassword)}
+  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+>
+  {showPassword ? (
+    <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-white" />
+  ) : (
+    <EyeIcon className="h-5 w-5 text-gray-400 hover:text-white" />
+  )}
+</button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-white text-gray-900 font-semibold py-3 px-4 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Logging in...' : 'Login'}
+          </button>
+        </form>
+
+        <p className="text-center text-gray-400 text-sm mt-6">
+          No signup available. Contact Admin to create an account.
+        </p>
+      </motion.div>
+    </div>
+  );
+};
+
+export default LoginPage;
