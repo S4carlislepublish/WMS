@@ -24,7 +24,7 @@ const [selectedEmployee, setSelectedEmployee] = useState("");
   company_email: '',
   role_id: 0,
   team_id: 0,
-  access_level: 'standard',
+  access_level: 'user',
   status: 'active',
 });
 
@@ -77,6 +77,26 @@ const [selectedEmployee, setSelectedEmployee] = useState("");
       console.error('Failed to fetch roles/teams');
     }
   };
+
+  const handleTeamChange = async (teamId: string) => {
+
+  setFormData({
+    ...formData,
+    team_id: teamId,
+    role_id: ""
+  });
+
+  try {
+
+const response = await apiService.getRolesByTeam(teamId);
+
+setRoles(response.data.roles);
+    setRoles(response.data.roles);
+
+  } catch (error) {
+    console.error(error);
+  }
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,26 +276,6 @@ const [selectedEmployee, setSelectedEmployee] = useState("");
             placeholder={user ? "Leave blank to keep same" : "Enter password"}
           />
         </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-semibold text-slate-700">
-            Role *
-          </label>
-          <select
-            required
-            value={formData.role_id}
-            onChange={(e) => setFormData({ ...formData, role_id: parseInt(e.target.value) })}
-            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-          >
-            <option value="">Select Role</option>
-            {roles.map((role) => (
-              <option key={role.id} value={role.id}>
-                {role.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <div>
           <label className="mb-2 block text-sm font-semibold text-slate-700">
             Team *
@@ -283,8 +283,9 @@ const [selectedEmployee, setSelectedEmployee] = useState("");
           <select
             required
             value={formData.team_id}
-            onChange={(e) => setFormData({ ...formData, team_id: parseInt(e.target.value) })}
-            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+onChange={(e) =>
+  handleTeamChange(e.target.value)
+}            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
           >
             <option value="">Select Team</option>
             {teams.map((team) => (
@@ -297,18 +298,56 @@ const [selectedEmployee, setSelectedEmployee] = useState("");
 
         <div>
           <label className="mb-2 block text-sm font-semibold text-slate-700">
-            Access Level
+            Role *
           </label>
           <select
-            value={formData.access_level}
-            onChange={(e) => setFormData({ ...formData, access_level: e.target.value })}
-            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-          >
-            <option value="standard">Standard</option>
-            <option value="elevated">Elevated</option>
-            <option value="admin">Admin</option>
-          </select>
+           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+  value={formData.role_id}
+  onChange={(e) =>
+    setFormData({
+      ...formData,
+      role_id: e.target.value
+    })
+  }
+>
+  <option value="">
+    Select Role
+  </option>
+
+  {roles.map((role: any) => (
+    <option
+      key={role.id}
+      value={role.id}
+    >
+      {role.name}
+    </option>
+  ))}
+</select>
         </div>
+
+        
+
+        <div>
+  <label className="mb-2 block text-sm font-semibold text-slate-700">
+    Access Level
+  </label>
+
+  <select
+    value={formData.access_level}
+    onChange={(e) =>
+      setFormData({
+        ...formData,
+        access_level: e.target.value,
+      })
+    }
+    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+  >
+    <option value="user">User</option>
+    <option value="manager">Manager</option>
+    <option value="hr">HR</option>
+    <option value="admin">Admin</option>
+  </select>
+</div>
 
         <div>
           <label className="mb-2 block text-sm font-semibold text-slate-700">

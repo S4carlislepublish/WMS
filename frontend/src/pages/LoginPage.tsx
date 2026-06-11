@@ -26,37 +26,81 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      const response = await login(formData.email, formData.password);
-      const role = response.role || "";
+  try {
+    const response = await login(
+  formData.email,
+  formData.password
+);
 
-      const employeeRoles = ["Pre-Editing", "Copywriting", "QA"];
-      const isEmployee = employeeRoles.includes(role);
+if (
+  response.is_first_login ||
+  !response.profile_completed
+) {
+  navigate("/complete-profile");
+  return;
+}
 
-      if (
-        isEmployee &&
-        (response.profile_completed === false || response.is_first_login === true)
-      ) {
-        navigate("/complete-profile");
-      } else if (isEmployee) {
-        navigate("/employee-dashboard");
-      } else if (role === "HR") {
-        navigate("/dashboard");
-      } else if (role === "Admin" || role === "Super Admin") {
-        navigate("/dashboard");
-      } else {
-        navigate("/dashboard");
-      }
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.response?.data?.error || "Login failed");
-    } finally {
-      setLoading(false);
+    console.log("Login Response:", response);
+
+    const role =
+      response.role ||
+      response.user?.role_name ||
+      "";
+
+    const employeeRoles = [
+      "Pre-Editing",
+      "Copywriting",
+      "QA"
+    ];
+
+    const isEmployee =
+      employeeRoles.includes(role);
+
+    if (
+      isEmployee &&
+      (
+        response.profile_completed === false ||
+        response.is_first_login === true
+      )
+    ) {
+      navigate("/complete-profile");
     }
-  };
+    else if (isEmployee) {
+      navigate("/employee-dashboard");
+    }
+    else if (role === "HR") {
+      navigate("/hr-dashboard");
+    }
+    else if (
+      role === "Admin" ||
+      role === "Super Admin"
+    ) {
+      navigate("/admin-dashboard");
+    }
+    else if (role === "Manager") {
+      navigate("/manager-dashboard");
+    }
+    else {
+      navigate("/dashboard");
+    }
+    console.log("Login Response:", response);
+console.log("Role:", response.role);
+console.log("User:", response.user);
+
+  } catch (error: any) {
+    console.error(error);
+
+    toast.error(
+      error.response?.data?.error ||
+      "Login failed"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f5f5f5] overflow-hidden">
@@ -157,7 +201,7 @@ const LoginPage: React.FC = () => {
                     </div>
 
                     <input
-                      type="email"
+                      type=""
                       required
                       value={formData.email}
                       onChange={(e) =>

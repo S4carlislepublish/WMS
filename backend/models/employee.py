@@ -137,3 +137,9 @@ class Employee(db.Model):
         db.Boolean,
         default=True
     )
+
+    team_id = db.Column(
+    db.Integer,
+    db.ForeignKey("teams.id"),
+    nullable=True
+)

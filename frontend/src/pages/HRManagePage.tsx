@@ -69,6 +69,9 @@ function Avatar({ initials, size = 36 }: { initials: string; size?: number }) {
 }
 
 function Chip({ type }: { type: string }) {
+
+  const status = (type || "").toLowerCase();
+
   const styles: any = {
     active: { bg: "#D1FAE5", c: "#10B981", txt: "ACTIVE" },
     pending: { bg: "#FEF3C7", c: "#F59E0B", txt: "PENDING" },
@@ -77,10 +80,25 @@ function Chip({ type }: { type: string }) {
     present: { bg: "#D1FAE5", c: "#10B981", txt: "PRESENT" },
     absent: { bg: "#FEE2E2", c: "#EF4444", txt: "ABSENT" },
     late: { bg: "#FEF3C7", c: "#F59E0B", txt: "LATE" },
-    on_leave: { bg: "#DBEAFE", c: "#3B82F6", txt: "ON LEAVE" },
+    on_leave: { bg: "#DBEAFE", c: "#3B82F6", txt: "ON LEAVE" }
   };
-  const s = styles[type] || styles.active;
-  return <span style={{ background: s.bg, color: s.c, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>{s.txt}</span>;
+
+  const s = styles[status] || styles.absent;
+
+  return (
+    <span
+      style={{
+        background: s.bg,
+        color: s.c,
+        fontSize: 11,
+        fontWeight: 700,
+        padding: "4px 10px",
+        borderRadius: 999
+      }}
+    >
+      {s.txt}
+    </span>
+  );
 }
 
 function Panel({ children, style = {} }: any) {
@@ -102,7 +120,7 @@ const bg = variant === "primary"
 export default function HRAdminDashboard() {
   const [nav, setNav] = useState("dashboard");
   const [search, setSearch] = useState("");
-  const [leaves, setLeaves] = useState(LEAVES);
+  const [leaves, setLeaves] = useState([]);
   const [employees, setEmployees] = useState(EMPLOYEES);
   const [addEmpOpen, setAddEmpOpen] = useState(false);
   const [profileCompleteOpen, setProfileCompleteOpen] = useState(false);
@@ -110,6 +128,7 @@ export default function HRAdminDashboard() {
   const [teams, setTeams] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [attendance, setAttendance] = useState([]);
   const [profileImage, setProfileImage] = useState(null);
 
@@ -132,6 +151,7 @@ export default function HRAdminDashboard() {
 useEffect(() => {
   fetchEmployees();
   fetchAttendance();
+  fetchLeaveRequests();
 }, []);
 
   useEffect(() => {
@@ -253,9 +273,11 @@ const counts = useMemo(() => {
       onLeaveEmployees > 0
         ? onLeaveEmployees
         : 0,
-    pendingLeaves:
-      leaves?.length || 0,
-  };
+pendingLeaves:
+  leaves.filter(
+    (leave) =>
+      leave.status === "pending"
+  ).length,  };
 
 }, [employees, attendance, leaves]);
 
@@ -281,17 +303,43 @@ const filteredEmps = employees.filter((e) =>
     .includes(search.toLowerCase())
 );
 
-  const handleApproveLeave = (id: number) => {
-    const leave = leaves.find(l => l.id === id);
-    if (leave) {
-      setLeaves(leaves.map(l => l.id === id ? { ...l, status: "approved", approvedBy: "HR Admin" } : l));
-      setEmployees(employees.map(e => e.id === leave.empId ? { ...e, status: "on_leave" } : e));
-    }
-  };
+const handleApproveLeave = async (id) => {
+  try {
+    const response = await fetch(
+      `http://10.1.8.103:5000/api/leaves/approve/${id}`,
+      {
+        method: "PUT",
+      }
+    );
 
-  const handleRejectLeave = (id: number) => {
-    setLeaves(leaves.map(l => l.id === id ? { ...l, status: "rejected", approvedBy: "HR Admin" } : l));
-  };
+    const data = await response.json();
+
+    if (data.success) {
+      fetchLeaveRequests();
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+  const handleRejectLeave = async (id) => {
+  try {
+    const response = await fetch(
+      `http://10.1.8.103:5000/api/leaves/reject/${id}`,
+      {
+        method: "PUT",
+      }
+    );
+
+    const data = await response.json();
+
+    if (data.success) {
+      fetchLeaveRequests();
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
 
   const handleAddEmployee = async () => {
     // Validate mandatory fields
@@ -379,6 +427,7 @@ const response = await fetch(
 
       const data = await response.json();
       alert(data.message || "Employee Added Successfully");
+      await fetchEmployees();
       setAddEmpOpen(false);
       setNewEmp({
   employee_id: "",
@@ -479,9 +528,64 @@ const fetchEmployees = async () => {
   }
 };
 
-useEffect(() => {
-  fetchEmployees();
-}, []);
+
+
+
+
+const fetchLeaveRequests = async () => {
+  try {
+    const response = await fetch(
+      "http://10.1.8.103:5000/api/leaves/"
+    );
+
+    const data = await response.json();
+
+    const formattedLeaves = data.map((leave) => ({
+      id: leave.id,
+      empId: leave.employee_id,
+      empName: leave.employee_name,
+      av: leave.employee_name
+        ?.split(" ")
+        ?.map((n) => n[0])
+        ?.join("")
+        ?.toUpperCase(),
+      type: leave.leave_type,
+      from: leave.from_date,
+      to: leave.to_date,
+      days: leave.total_days,
+      reason: leave.reason,
+      status: leave.status?.toLowerCase(),
+      reporting_manager:
+        leave.reporting_manager,
+    }));
+
+    setLeaves(formattedLeaves);
+
+    console.log(
+      "Leave Requests:",
+      formattedLeaves
+    );
+  } catch (error) {
+    console.error(
+      "Leave Fetch Error:",
+      error
+    );
+  }
+};
+
+const thStyle = {
+  padding: "14px",
+  textAlign: "left",
+  fontSize: 12,
+  fontWeight: 700,
+  color: "#64748B",
+  textTransform: "uppercase",
+};
+
+const tdStyle = {
+  padding: "14px",
+  fontSize: 13,
+};
 
 
   return (
@@ -740,103 +844,118 @@ useEffect(() => {
       <rect x="3" y="14" width="7" height="7" rx="1" />
       <rect x="14" y="14" width="7" height="7" rx="1" />
     </svg>
-    Department Overview
+    Team Overview
   </div>
 
-  {[...new Set(employees.map((emp) => emp.department))]
+  {[...new Set(employees.map((emp) => emp.designation))]
     .filter(Boolean)
-    .map((dept) => {
-      const departmentEmployees = employees.filter(
-  (emp) => emp.department === dept
-);
+    .map((team) => {
 
-const totalDepartmentSalary = departmentEmployees.reduce(
-  (sum, emp) => sum + (Number(emp.salary) || 0),
-  0
-);
-      const empCount = employees.filter((emp) => emp.department === dept).length;
-      const isActive = selectedDepartment === dept;
-      
+      const teamEmployees = employees.filter(
+        (emp) => emp.designation === team
+      );
+
+      const empCount = teamEmployees.length;
+
+      const totalTeamSalary =
+        teamEmployees.reduce(
+          (sum, emp) =>
+            sum + (Number(emp.salary) || 0),
+          0
+        );
+
+      const isActive =
+        selectedTeam === team;
+
       return (
-        <div key={dept}>
-          {/* Department Card */}
+        <div key={team}>
+
           <div
-            onClick={() => setSelectedDepartment(isActive ? null : dept)}
+            onClick={() =>
+              setSelectedTeam(
+                isActive ? null : team
+              )
+            }
             style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              padding: "14px 16px",
-              background: isActive ? '#4362EE08' : theme.surface2,
-              border: isActive ? '2px solid #4362EE' : '2px solid transparent',
-              borderRadius: 12,
-              marginBottom: 10,
+              padding: "16px 18px",
+              background: isActive
+                ? "#4362EE08"
+                : theme.surface2,
+              border: isActive
+                ? "2px solid #4362EE"
+                : "1px solid #E5E7EB",
+              borderRadius: 14,
+              marginBottom: 12,
               cursor: "pointer",
               transition: "all 0.2s ease",
-              boxShadow: isActive ? '0 2px 8px rgba(67, 98, 238, 0.15)' : 'none',
-            }}
-            onMouseEnter={(e) => {
-              if (!isActive) {
-                e.currentTarget.style.backgroundColor = '#f0f0f0';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isActive) {
-                e.currentTarget.style.backgroundColor = theme.surface2;
-              }
+              boxShadow: isActive
+                ? "0 2px 8px rgba(67, 98, 234, 0.15)"
+                : "0 1px 3px rgba(0, 0, 0, 0.05)",
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+              }}
+            >
               <div
                 style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: '#1F7A8C',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: "#1F7A8C",
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   fontWeight: 700,
-                  fontSize: 14,
+                  fontSize: 16,
+                  boxShadow: "0 2px 6px rgba(31, 122, 140, 0.25)",
                 }}
               >
-                {dept.charAt(0).toUpperCase()}
+                {team.charAt(0)}
               </div>
+
               <div>
                 <div
                   style={{
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: 600,
                     color: theme.text,
                   }}
                 >
-                  {dept}
+                  {team}
                 </div>
+
                 <div
                   style={{
                     fontSize: 12,
                     color: theme.textMuted,
+                    marginTop: 2,
                   }}
                 >
-                  Department
+                  {empCount} {empCount === 1 ? 'Member' : 'Members'}
                 </div>
               </div>
             </div>
 
             <div
               style={{
-                display: 'flex',
-                alignItems: 'center',
+                display: "flex",
+                alignItems: "center",
                 gap: 8,
-                fontWeight: 600,
               }}
             >
               <div
                 style={{
-                  background: '#4362EE15',
-                  color: '#4362EE',
-                  padding: '5px 10px',
+                  background: "#4362EE15",
+                  color: "#4362EE",
+                  padding: "6px 12px",
                   borderRadius: 8,
                   fontSize: 13,
                   fontWeight: 600,
@@ -844,263 +963,196 @@ const totalDepartmentSalary = departmentEmployees.reduce(
               >
                 {empCount}
               </div>
-              <span style={{ color: theme.textMuted, fontSize: 13 }}>
-                {empCount === 1 ? 'Employee' : 'Employees'}
-              </span>
+
               <svg
                 width="18"
                 height="18"
-                viewBox="0 0 20 20"
+                viewBox="0 0 24 24"
                 fill="none"
+                stroke={isActive ? "#4362EE" : theme.textMuted}
+                strokeWidth="2"
                 style={{
-                  transform: isActive ? 'rotate(180deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.2s ease',
-                  color: theme.textMuted,
+                  transition: "transform 0.2s ease",
+                  transform: isActive ? "rotate(180deg)" : "rotate(0deg)",
                 }}
               >
-                <path
-                  d="M5 7.5L10 12.5L15 7.5"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                <polyline points="6 9 12 15 18 9" />
               </svg>
             </div>
           </div>
 
-          {/* Employee Table - Shows RIGHT BELOW the selected department */}
           {isActive && (
             <div
               style={{
-                marginTop: 10,
-                marginLeft: 16,
-                marginRight: 16,
-                marginBottom: 10,
-                animation: 'fadeIn 0.3s ease',
+                marginBottom: 20,
+                paddingLeft: 18,
+                paddingRight: 18,
+                paddingTop: 16,
+                paddingBottom: 16,
+                background: theme.surface2,
+                borderRadius: 12,
+                border: `1px solid #E5E7EB`,
+                animation: "fadeIn 0.3s ease",
               }}
             >
               <div
-  style={{
-    fontSize: 14,
-    fontWeight: 600,
-    marginBottom: 12,
-    color: theme.text,
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap",
-  }}
->
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4362EE" strokeWidth="2">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-  </svg>
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  marginBottom: 16,
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  style={{
+                    background: "#1F7A8C",
+                    color: "#fff",
+                    padding: "6px 14px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  Members: {empCount}
+                </span>
 
-  {dept} Employees
+                <span
+                  style={{
+                    background: "#16A34A",
+                    color: "#fff",
+                    padding: "6px 14px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  Total Salary: ₹{totalTeamSalary.toLocaleString()}
+                </span>
+              </div>
 
-  <span
-    style={{
-      background: "#1F7A8C",
-      color: "white",
-      padding: "2px 6px",
-      borderRadius: 8,
-      fontSize: 11,
-      fontWeight: 600,
-    }}
-  >
-    {empCount}
-  </span>
-
-  <span
-    style={{
-      background: "#16A34A",
-      color: "white",
-      padding: "2px 8px",
-      borderRadius: 8,
-      fontSize: 11,
-      fontWeight: 600,
-    }}
-  >
-    Total Salary: ₹{totalDepartmentSalary.toLocaleString()}
-  </span>
-</div>
               <div
                 style={{
-                  overflow: 'auto',
-                  borderRadius: 10,
-                  border: `1px solid ${theme.border}`,
-                  background: theme.surface || '#ffffff',
+                  overflowX: "auto",
                 }}
               >
                 <table
                   style={{
                     width: "100%",
                     borderCollapse: "collapse",
-                    minWidth: 500,
+                    fontSize: 14,
                   }}
                 >
                   <thead>
                     <tr
                       style={{
-                        background: theme.surface2,
-                        borderBottom: `2px solid ${theme.border}`,
+                        background: "#F9FAFB",
+                        borderBottom: "2px solid #E5E7EB",
                       }}
                     >
                       <th
                         style={{
-                          padding: "10px 12px",
+                          padding: "12px 14px",
                           textAlign: "left",
-                          fontSize: 11,
                           fontWeight: 600,
-                          color: theme.textMuted,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
+                          color: theme.text,
+                          fontSize: 13,
                         }}
                       >
                         Employee Name
                       </th>
                       <th
                         style={{
-                          padding: "10px 12px",
+                          padding: "12px 14px",
                           textAlign: "left",
-                          fontSize: 11,
                           fontWeight: 600,
-                          color: theme.textMuted,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
+                          color: theme.text,
+                          fontSize: 13,
                         }}
                       >
                         Role
                       </th>
                       <th
                         style={{
-                          padding: "10px 12px",
+                          padding: "12px 14px",
                           textAlign: "left",
-                          fontSize: 11,
                           fontWeight: 600,
-                          color: theme.textMuted,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
-                        }}
-                      >
-                        Designation
-                      </th>
-                      <th
-                        style={{
-                          padding: "10px 12px",
-                          textAlign: "left",
-                          fontSize: 11,
-                          fontWeight: 600,
-                          color: theme.textMuted,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
+                          color: theme.text,
+                          fontSize: 13,
                         }}
                       >
                         Reporting Manager
                       </th>
                       <th
-  style={{
-    padding: "10px 12px",
-    textAlign: "left",
-    fontSize: 11,
-    fontWeight: 600,
-    color: theme.textMuted,
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-  }}
->
-  Salary
-</th>
+                        style={{
+                          padding: "12px 14px",
+                          textAlign: "left",
+                          fontWeight: 600,
+                          color: theme.text,
+                          fontSize: 13,
+                        }}
+                      >
+                        Salary
+                      </th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    {employees
-                      .filter((emp) => emp.department === dept)
-                      .map((emp, index) => (
-                        <tr
-                          key={emp.id}
+                    {teamEmployees.map((emp, idx) => (
+                      <tr
+                        key={emp.id}
+                        style={{
+                          borderBottom:
+                            idx !== teamEmployees.length - 1
+                              ? "1px solid #F3F4F6"
+                              : "none",
+                          background: idx % 2 === 0 ? "#fff" : theme.surface2,
+                        }}
+                      >
+                        <td
                           style={{
-                            borderBottom: `1px solid ${theme.border}`,
-                            background: index % 2 === 0 ? '#ffffff' : '#fafafa',
-                            transition: 'background 0.15s ease',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#4362EE05';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = index % 2 === 0 ? '#ffffff' : '#fafafa';
+                            padding: "12px 14px",
+                            color: theme.text,
                           }}
                         >
-                          <td
-                            style={{
-                              padding: "10px 12px",
-                              fontSize: 13,
-                              fontWeight: 500,
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <div
-                                style={{
-                                  width: 26,
-                                  height: 26,
-                                  borderRadius: 6,
-                                  background: '#1F7A8C',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: 'white',
-                                  fontSize: 10,
-                                  fontWeight: 600,
-                                }}
-                              >
-                                {emp.first_name?.charAt(0)}{emp.last_name?.charAt(0)}
-                              </div>
-                              {emp.first_name} {emp.last_name}
-                            </div>
-                          </td>
-                          <td style={{ padding: "10px 12px", fontSize: 12 }}>
-                            {emp.role || "-"}
-                          </td>
-                          <td style={{ padding: "10px 12px", fontSize: 12 }}>
-                            {emp.designation || "-"}
-                          </td>
-                          <td style={{ padding: "10px 12px", fontSize: 12 }}>
-                            {emp.reporting_manager || "-"}
-                          </td>
-                          <td
-  style={{
-    padding: "10px 12px",
-    fontSize: 12,
-    fontWeight: 600,
-    color: "#16A34A",
-  }}
->
-  ₹{Number(emp.salary || 0).toLocaleString()}
-</td>
-                        </tr>
-                      ))}
+                          {emp.first_name}
+                          {" "}
+                          {emp.last_name}
+                        </td>
+
+                        <td
+                          style={{
+                            padding: "12px 14px",
+                            color: theme.text,
+                          }}
+                        >
+                          {emp.role}
+                        </td>
+
+                        <td
+                          style={{
+                            padding: "12px 14px",
+                            color: theme.text,
+                          }}
+                        >
+                          {emp.reporting_manager}
+                        </td>
+
+                        <td
+                          style={{
+                            padding: "12px 14px",
+                            color: theme.text,
+                            fontWeight: 500,
+                          }}
+                        >
+                          ₹{Number(
+                            emp.salary || 0
+                          ).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
-
-              {empCount === 0 && (
-                <div
-                  style={{
-                    textAlign: 'center',
-                    padding: 30,
-                    color: theme.textMuted,
-                    borderRadius: 10,
-                    border: `1px solid ${theme.border}`,
-                    background: theme.background || '#ffffff',
-                  }}
-                >
-                  <div>No employees found in this department</div>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -1225,9 +1277,6 @@ const totalDepartmentSalary = departmentEmployees.reduce(
               Employee
             </th>
             <th style={{ padding: "16px 16px", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              Department
-            </th>
-            <th style={{ padding: "16px 16px", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.5px" }}>
               Role
             </th>
             <th style={{ padding: "16px 16px", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.5px" }}>
@@ -1286,24 +1335,7 @@ const totalDepartmentSalary = departmentEmployees.reduce(
                 </div>
               </td>
 
-              <td style={{ padding: "14px 16px" }}>
-                <div style={{ 
-                  display: "inline-flex", 
-                  alignItems: "center", 
-                  gap: 6,
-                  padding: "6px 12px",
-                  background: theme.surface,
-                  borderRadius: 6,
-                  border: `1px solid ${theme.border}`
-                }}>
-                  <svg style={{ width: 14, height: 14, color: theme.textMuted }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                  <span style={{ fontSize: 13, color: theme.text, fontWeight: 500 }}>
-                    {emp.department || "N/A"}
-                  </span>
-                </div>
-              </td>
+              
 
               <td style={{ padding: "14px 16px" }}>
                 <span style={{ 
@@ -1425,8 +1457,20 @@ const totalDepartmentSalary = departmentEmployees.reduce(
         {nav === "attendance" && (
           <Panel>
             <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>Today's Attendance</div>
-            <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 20 }}>June 1, 2026 • Monday</div>
-            
+<div
+  style={{
+    fontSize: 12,
+    color: theme.textMuted,
+    marginBottom: 20,
+  }}
+>
+  {new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    weekday: "long",
+  })}
+</div>            
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", textAlign: "left", fontSize: 13, borderCollapse: "collapse" }}>
                 <thead>
@@ -1475,104 +1519,249 @@ const totalDepartmentSalary = departmentEmployees.reduce(
 
         {/* --- LEAVE MANAGEMENT VIEW --- */}
         {nav === "leave" && (
-          <Panel>
-            <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>Leave Management</div>
-            <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 20 }}>Approve or reject leave requests as HR Admin</div>
-            
-            {leaves.map(l => (
-              <div key={l.id} style={{ 
-                display: "flex", 
-                justifyContent: "space-between", 
-                alignItems: "center", 
-                padding: 18, 
-                border: `1px solid ${theme.border}`, 
-                borderRadius: 12, 
-                background: theme.surface2, 
-                marginBottom: 16,
-                flexWrap: "wrap",
-                gap: 16
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 16, flex: 1 }}>
-                  <Avatar initials={l.av} size={44} />
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
-                      {l.empName} <span style={{ fontWeight: 600, color: theme.accent }}>- {l.type}</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 2 }}>
-                      📅 {l.from} to {l.to} • <strong>{l.days} days</strong>
-                    </div>
-                    <div style={{ fontSize: 12, color: theme.textMuted, fontStyle: "italic" }}>
-                      "{l.reason}"
-                    </div>
+  <Panel>
+    <div
+      style={{
+        fontSize: 15,
+        fontWeight: 800,
+        marginBottom: 4,
+      }}
+    >
+      Leave Management
+    </div>
+
+    <div
+      style={{
+        fontSize: 12,
+        color: theme.textMuted,
+        marginBottom: 20,
+      }}
+    >
+      Approve or reject leave requests as HR Admin
+    </div>
+
+    <div
+      style={{
+        overflowX: "auto",
+        border: `1px solid ${theme.border}`,
+        borderRadius: 12,
+        background: "#fff",
+      }}
+    >
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          minWidth: "1200px",
+        }}
+      >
+        <thead>
+          <tr
+            style={{
+              background: theme.surface2,
+              borderBottom: `2px solid ${theme.border}`,
+            }}
+          >
+            <th style={thStyle}>Employee</th>
+            <th style={thStyle}>Employee ID</th>
+            <th style={thStyle}>Leave Type</th>
+            <th style={thStyle}>From Date</th>
+            <th style={thStyle}>To Date</th>
+            <th style={thStyle}>Days</th>
+            <th style={thStyle}>Reason</th>
+            <th style={thStyle}>Reporting Manager</th>
+            <th style={thStyle}>Status</th>
+            <th style={thStyle}>Action</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {leaves.map((l, index) => (
+            <tr
+              key={l.id}
+              style={{
+                borderBottom: `1px solid ${theme.border}`,
+                background:
+                  index % 2 === 0
+                    ? "#FFFFFF"
+                    : "#F8FAFC",
+              }}
+            >
+              <td style={tdStyle}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <Avatar
+                    initials={l.av}
+                    size={36}
+                  />
+                  <span
+                    style={{
+                      fontWeight: 600,
+                    }}
+                  >
+                    {l.empName}
+                  </span>
+                </div>
+              </td>
+
+              <td style={tdStyle}>
+                {l.empId}
+              </td>
+
+              <td style={tdStyle}>
+                {l.type}
+              </td>
+
+              <td style={tdStyle}>
+                {l.from}
+              </td>
+
+              <td style={tdStyle}>
+                {l.to}
+              </td>
+
+              <td style={tdStyle}>
+                {l.days}
+              </td>
+
+              <td style={tdStyle}>
+                {l.reason}
+              </td>
+
+              <td style={tdStyle}>
+                {l.reporting_manager}
+              </td>
+
+              <td style={tdStyle}>
+                <Chip
+                  type={l.status}
+                />
+              </td>
+
+              <td style={tdStyle}>
+                {l.status ===
+                "pending" ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                    }}
+                  >
+                    <button
+                      onClick={() =>
+                        handleApproveLeave(
+                          l.id
+                        )
+                      }
+                      style={{
+                        background:
+                          "#10B981",
+                        color: "#fff",
+                        border: "none",
+                        padding:
+                          "8px 12px",
+                        borderRadius: 8,
+                        cursor:
+                          "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Approve
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        handleRejectLeave(
+                          l.id
+                        )
+                      }
+                      style={{
+                        background:
+                          "#EF4444",
+                        color: "#fff",
+                        border: "none",
+                        padding:
+                          "8px 12px",
+                        borderRadius: 8,
+                        cursor:
+                          "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Reject
+                    </button>
                   </div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <Chip type={l.status} />
-                  {l.status === "pending" && (
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <button 
-                        onClick={() => handleApproveLeave(l.id)} 
-                        style={{ 
-                          display: "flex", 
-                          alignItems: "center", 
-                          gap: 6,
-                          border: "none", 
-                          background: theme.green, 
-                          color: "#fff", 
-                          padding: "10px 20px", 
-                          borderRadius: 8, 
-                          fontWeight: 700, 
-                          cursor: "pointer",
-                          fontSize: 12
-                        }}
-                      >
-                        <CheckCircleIcon style={{ width: 16, height: 16 }} />
-                        Approve
-                      </button>
-                      <button 
-                        onClick={() => handleRejectLeave(l.id)} 
-                        style={{ 
-                          display: "flex", 
-                          alignItems: "center", 
-                          gap: 6,
-                          border: "none", 
-                          background: theme.red, 
-                          color: "#fff", 
-                          padding: "10px 20px", 
-                          borderRadius: 8, 
-                          fontWeight: 700, 
-                          cursor: "pointer",
-                          fontSize: 12
-                        }}
-                      >
-                        <XCircleIcon style={{ width: 16, height: 16 }} />
-                        Reject
-                      </button>
-                    </div>
-                  )}
-                  {l.status === "approved" && (
-                    <div style={{ fontSize: 11, color: theme.textMuted }}>
-                      Approved by HR Admin
-                    </div>
-                  )}
-                  {l.status === "rejected" && (
-                    <div style={{ fontSize: 11, color: theme.textMuted }}>
-                      Rejected by HR Admin
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            
-            {counts.pendingLeaves === 0 && (
-              <div style={{ textAlign: "center", padding: 40, color: theme.textMuted }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>✓</div>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>All caught up!</div>
-                <div style={{ fontSize: 13 }}>No pending leave requests</div>
-              </div>
-            )}
-          </Panel>
-        )}
+                ) : l.status ===
+                  "approved" ? (
+                  <span
+                    style={{
+                      color:
+                        "#16A34A",
+                      fontWeight: 700,
+                    }}
+                  >
+                    ✓ Approved
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      color:
+                        "#DC2626",
+                      fontWeight: 700,
+                    }}
+                  >
+                    ✕ Rejected
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    {leaves.length === 0 && (
+      <div
+        style={{
+          textAlign: "center",
+          padding: 40,
+          color: theme.textMuted,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 48,
+            marginBottom: 12,
+          }}
+        >
+          ✓
+        </div>
+
+        <div
+          style={{
+            fontSize: 16,
+            fontWeight: 700,
+          }}
+        >
+          All caught up!
+        </div>
+
+        <div
+          style={{
+            fontSize: 13,
+          }}
+        >
+          No leave requests found
+        </div>
+      </div>
+    )}
+  </Panel>
+)}
 
         {/* --- PERFORMANCE VIEW --- */}
         {nav === "performance" && (
@@ -1891,26 +2080,6 @@ const totalDepartmentSalary = departmentEmployees.reduce(
               placeholder="e.g., +91 9876543210"
               style={inputStyle}
             />
-          </div>
-
-          <div>
-            <label style={labelStyle}>DEPARTMENT *</label>
-            <select
-            required
-              value={newEmp.department}
-              onChange={(e) =>
-                setNewEmp({ ...newEmp, department: e.target.value })
-              }
-              style={inputStyle}
-            >
-              <option value="">Select Department</option>
-              <option value="Engineering">Engineering</option>
-              <option value="Product">Product</option>
-              <option value="Sales">Sales</option>
-              <option value="HR">HR</option>
-              <option value="Finance">Finance</option>
-              <option value="Marketing">Marketing</option>
-            </select>
           </div>
 
           <div>

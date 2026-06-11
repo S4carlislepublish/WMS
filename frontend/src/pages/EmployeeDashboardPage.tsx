@@ -35,6 +35,7 @@ interface Task {
   id: number;
   taskId: string;
   projectName: string;
+  complexity: string
   assignedDate: string;
   dueDate: string;
   priority: 'High' | 'Medium' | 'Low';
@@ -108,12 +109,12 @@ const employeeData: Employee = {
 };
 
 const tasksData: Task[] = [
-  { id: 1, taskId: "TSK-001", projectName: "Website Redesign", assignedDate: "2026-05-20", dueDate: "2026-06-05", priority: "High", status: "In Progress", description: "Content preprocessing and formatting" },
-  { id: 2, taskId: "TSK-002", projectName: "Mobile App Launch", assignedDate: "2026-05-22", dueDate: "2026-06-10", priority: "Medium", status: "Pending", description: "Text extraction and cleanup" },
-  { id: 3, taskId: "TSK-003", projectName: "Content Strategy", assignedDate: "2026-05-15", dueDate: "2026-05-30", priority: "High", status: "Completed", description: "Document formatting and styling" },
-  { id: 4, taskId: "TSK-004", projectName: "SEO Optimization", assignedDate: "2026-05-25", dueDate: "2026-06-15", priority: "Low", status: "Pending", description: "Metadata preparation" },
-  { id: 5, taskId: "TSK-005", projectName: "Brand Guidelines", assignedDate: "2026-05-18", dueDate: "2026-06-08", priority: "Medium", status: "On Hold", description: "Style guide preprocessing" },
-  { id: 6, taskId: "TSK-006", projectName: "E-commerce Platform", assignedDate: "2026-05-28", dueDate: "2026-06-20", priority: "High", status: "In Progress", description: "Product description editing" },
+  { id: 1, taskId: "TSK-001", projectName: "Website Redesign", complexity: "sample", assignedDate: "2026-05-20", dueDate: "2026-06-05", priority: "High", status: "In Progress", description: "Content preprocessing and formatting" },
+  { id: 2, taskId: "TSK-002", projectName: "Mobile App Launch", complexity: "sample", assignedDate: "2026-05-22", dueDate: "2026-06-10", priority: "Medium", status: "Pending", description: "Text extraction and cleanup" },
+  { id: 3, taskId: "TSK-003", projectName: "Content Strategy", complexity: "sample",assignedDate: "2026-05-15", dueDate: "2026-05-30", priority: "High", status: "Completed", description: "Document formatting and styling" },
+  { id: 4, taskId: "TSK-004", projectName: "SEO Optimization", complexity: "sample", assignedDate: "2026-05-25", dueDate: "2026-06-15", priority: "Low", status: "Pending", description: "Metadata preparation" },
+  { id: 5, taskId: "TSK-005", projectName: "Brand Guidelines", complexity: "sample", assignedDate: "2026-05-18", dueDate: "2026-06-08", priority: "Medium", status: "On Hold", description: "Style guide preprocessing" },
+  { id: 6, taskId: "TSK-006", projectName: "E-commerce Platform", complexity: "sample", assignedDate: "2026-05-28", dueDate: "2026-06-20", priority: "High", status: "In Progress", description: "Product description editing" },
 ];
 
 const leaveRequestsData: LeaveRequest[] = [
@@ -176,6 +177,30 @@ const EmployeeDashboardPage: React.FC = () => {
   const [editingLeave, setEditingLeave] =
   useState<any>(null);
 
+  const [birthdayModal, setBirthdayModal] =
+  useState(false);
+
+const [birthdayEmployees, setBirthdayEmployees] =
+  useState([]);
+
+  const fetchTodayBirthdays = async () => {
+  try {
+
+    const res = await fetch(
+      "http://10.1.8.103:5000/api/employees/birthdays/today"
+    );
+
+    const data = await res.json();
+
+    if (data.length > 0) {
+      setBirthdayEmployees(data);
+    }
+
+  } catch (err) {
+    console.log(err);
+  }
+};
+
 const [showEditModal, setShowEditModal] =
   useState(false);
   const [leaveTab, setLeaveTab] =
@@ -211,6 +236,7 @@ const [leaveRequests, setLeaveRequests] =
 });
 
 useEffect(() => {
+  fetchTodayBirthdays(),
   loadLeaves();
 }, []);
 
@@ -281,21 +307,59 @@ const [attendanceData, setAttendanceData] =
   if (!userId) return;
 
   fetch(
-    `http://10.1.8.103:5000/api/attendance/history/${userId}`
+    `http://10.1.8.103:5000/api/attendance/status/${userId}`
   )
     .then(res => res.json())
     .then(data => {
 
-      console.log("Attendance Data:", data);
+      if (data.checked_in) {
 
-      setAttendanceData(data);
+        setIsCheckedIn(true);
 
-    })
-    .catch(err => {
-      console.error(err);
+        setCheckInTime(
+          new Date(data.check_in)
+        );
+
+        setIsLunchBreak(
+          data.lunch_break || false
+        );
+
+        setIsTeaBreak(
+          data.tea_break || false
+        );
+
+        if (data.lunch_start) {
+
+          setLunchStartTime(
+            new Date(data.lunch_start)
+          );
+
+        }
+
+        if (data.tea_start) {
+
+          setTeaStartTime(
+            new Date(data.tea_start)
+          );
+
+        }
+
+      }
+
     });
 
 }, []);
+
+const [showCommunication, setShowCommunication] =
+  useState(false);
+
+
+
+const [selectedUser, setSelectedUser] =
+  useState<any>(null);
+
+const [messageText, setMessageText] =
+  useState("");
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: HomeIcon },
@@ -318,29 +382,27 @@ const [lunchTime, setLunchTime] = useState(0);
 const [teaTime, setTeaTime] = useState(0);
  const [isLunchTaken, setIsLunchTaken] = useState(false);
   const [isTeaTaken, setIsTeaTaken] = useState(false);
+  const [isLunchBreak, setIsLunchBreak] =
+  useState(false);
 
-    const BREAK_DURATION = 30 * 60 * 1000; // 30 minutes in ms
+const [isTeaBreak, setIsTeaBreak] =
+  useState(false);
+
+const [lunchStartTime, setLunchStartTime] =
+  useState<Date | null>(null);
+
+const [teaStartTime, setTeaStartTime] =
+  useState<Date | null>(null);
 
 
-  // Working timer - automatically subtracts break time
-  // useEffect(() => {
-  //   let interval: NodeJS.Timeout;
-  //   if (isCheckedIn && checkInTime) {
-  //     interval = setInterval(() => {
-  //       const now = Date.now();
-  //       const totalTime = now - checkInTime.getTime();
-        
-  //       // Subtract break time instantly
-  //       let breakTime = 0;
-  //       if (isLunchTaken) breakTime += BREAK_DURATION;
-  //       if (isTeaTaken) breakTime += BREAK_DURATION;
-        
-  //       const workingTime = totalTime - breakTime;
-  //       setTimer(formatTime(workingTime));
-  //     }, 1000);
-  //   }
-  //   return () => clearInterval(interval);
-  // }, [isCheckedIn, checkInTime, isLunchTaken, isTeaTaken]);
+const [totalLunchSeconds, setTotalLunchSeconds] =
+  useState(0);
+
+const [totalTeaSeconds, setTotalTeaSeconds] =
+  useState(0);
+
+
+
 
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(Math.max(0, ms) / 1000);
@@ -368,6 +430,7 @@ const [teaTime, setTeaTime] = useState(0);
         }),
       }
     );
+    
 
     const data = await response.json();
 
@@ -396,10 +459,25 @@ const [teaTime, setTeaTime] = useState(0);
 };
 
 const handleCheckOut = async () => {
+
   try {
 
-    const userId =
-      localStorage.getItem("user_id");
+    if (isLunchBreak) {
+      alert("Please End Lunch Break before Check Out.");
+      return;
+    }
+
+    if (isTeaBreak) {
+      alert("Please End Tea Break before Check Out.");
+      return;
+    }
+
+    const userId = localStorage.getItem("user_id");
+
+    if (!userId) {
+      alert("User ID not found.");
+      return;
+    }
 
     const response = await fetch(
       "http://10.1.8.103:5000/api/attendance/checkout",
@@ -416,80 +494,243 @@ const handleCheckOut = async () => {
 
     const data = await response.json();
 
-    if (data.success) {
-      const userId =
-  localStorage.getItem("user_id");
+    console.log("Checkout Response:", data);
 
-const attendanceResponse =
-  await fetch(
-    `http://10.1.8.103:5000/api/attendance/history/${userId}`
-  );
+    if (!response.ok) {
+      alert(data.error || "Checkout Failed");
+      return;
+    }
 
-const attendanceHistory =
-  await attendanceResponse.json();
+    const attendanceResponse = await fetch(
+      `http://10.1.8.103:5000/api/attendance/history/${userId}`
+    );
 
-setAttendanceData(
-  attendanceHistory
-);
+    const attendanceHistory = await attendanceResponse.json();
 
-      setIsCheckedIn(false);
+    setAttendanceData(attendanceHistory);
 
-      setCheckInTime(null);
+    setIsCheckedIn(false);
 
-      setTimer("00:00:00");
+    setCheckInTime(null);
 
-      localStorage.removeItem(
-  `checkInTime_${userId}`
-);
+    setTimer("00:00:00");
+
+    localStorage.removeItem(`checkInTime_${userId}`);
+
+    alert("Checked Out Successfully");
+
+  } catch (error) {
+
+    console.error("Checkout Error:", error);
+
+    alert("Something went wrong while checking out.");
+
+  }
+
+};
+
+const handleLunchBreak = async () => {
+
+  try {
+
+    const userId =
+      localStorage.getItem(
+        "user_id"
+      );
+
+    if (!userId) {
+      return;
+    }
+
+    // START LUNCH BREAK
+    if (!isLunchBreak) {
+
+      setLunchStartTime(
+        new Date()
+      );
+
+      setIsLunchBreak(
+        true
+      );
+
+      await fetch(
+        "http://10.1.8.103:5000/api/attendance/lunch-break",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body: JSON.stringify({
+            user_id:
+              Number(userId),
+            action:
+              "start"
+          })
+        }
+      );
+
+    }
+
+    // STOP LUNCH BREAK
+    else {
+
+      if (lunchStartTime) {
+
+        const endTime =
+          new Date();
+
+        const seconds =
+          Math.floor(
+            (
+              endTime.getTime() -
+              lunchStartTime.getTime()
+            ) / 1000
+          );
+
+        setTotalLunchSeconds(
+          (prev) =>
+            prev + seconds
+        );
+
+        setIsLunchBreak(
+          false
+        );
+
+        setLunchStartTime(
+          null
+        );
+
+        await fetch(
+          "http://10.1.8.103:5000/api/attendance/lunch-break",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify({
+              user_id:
+                Number(userId),
+
+              action:
+                "stop",
+
+              break_seconds:
+                seconds
+            })
+          }
+        );
+
+      }
+
     }
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      "Lunch Break Error:",
+      error
+    );
 
   }
-};
 
-  const handleLunchBreak = async () => {
-
-  const userId =
-    localStorage.getItem("user_id");
-
-  await fetch(
-    "http://10.1.8.103:5000/api/attendance/lunch-break",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        user_id: Number(userId)
-      })
-    }
-  );
-
-  setIsLunchTaken(true);
 };
 
 const handleTeaBreak = async () => {
 
-  const userId =
-    localStorage.getItem("user_id");
+  try {
 
-  await fetch(
-    "http://10.1.8.103:5000/api/attendance/tea-break",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        user_id: Number(userId)
-      })
+    const userId =
+      localStorage.getItem(
+        "user_id"
+      );
+
+    if (!userId) return;
+
+    // START TEA BREAK
+
+    if (!isTeaBreak) {
+
+      setTeaStartTime(
+        new Date()
+      );
+
+      setIsTeaBreak(true);
+
+      await fetch(
+        "http://10.1.8.103:5000/api/attendance/tea-break",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+          body: JSON.stringify({
+            user_id: Number(userId),
+            action: "start"
+          })
+        }
+      );
+
+    } else {
+
+      // STOP TEA BREAK
+
+      if (!teaStartTime) {
+        return;
+      }
+
+      const endTime =
+        new Date();
+
+      const seconds =
+        Math.floor(
+          (
+            endTime.getTime() -
+            teaStartTime.getTime()
+          ) / 1000
+        );
+
+      setTotalTeaSeconds(
+        (prev) =>
+          prev + seconds
+      );
+
+      setIsTeaBreak(false);
+
+      setTeaStartTime(null);
+
+      await fetch(
+        "http://10.1.8.103:5000/api/attendance/tea-break",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+          body: JSON.stringify({
+            user_id: Number(userId),
+            action: "stop"
+          })
+        }
+      );
+
     }
-  );
 
-  setIsTeaTaken(true);
+  } catch (error) {
+
+    console.error(
+      "Tea Break Error:",
+      error
+    );
+
+  }
+
 };
 
   const filteredTasks = useMemo(() => {
@@ -654,6 +895,8 @@ const handleTeaBreak = async () => {
   }
 };
 
+
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -697,37 +940,74 @@ useEffect(() => {
   }
 
 }, []);
+
+
 useEffect(() => {
+
   let interval: NodeJS.Timeout;
 
-  if (isCheckedIn && checkInTime) {
+  if (
+    isCheckedIn &&
+    checkInTime &&
+    !isLunchBreak &&
+    !isTeaBreak
+  ) {
 
     interval = setInterval(() => {
 
       const now = new Date();
 
-      const diff = Math.floor(
-        (now.getTime() - checkInTime.getTime()) / 1000
-      );
+      const totalWorkedSeconds =
+        Math.floor(
+          (
+            now.getTime() -
+            checkInTime.getTime()
+          ) / 1000
+        );
 
-      const hrs = Math.floor(diff / 3600);
-      const mins = Math.floor((diff % 3600) / 60);
-      const secs = diff % 60;
+      const breakSeconds =
+        totalLunchSeconds +
+        totalTeaSeconds;
+
+      const workingSeconds =
+        totalWorkedSeconds -
+        breakSeconds;
+
+      const hrs =
+        Math.floor(
+          workingSeconds / 3600
+        );
+
+      const mins =
+        Math.floor(
+          (workingSeconds % 3600) / 60
+        );
+
+      const secs =
+        workingSeconds % 60;
 
       setTimer(
-        `${hrs.toString().padStart(2, "0")}:${mins
-          .toString()
-          .padStart(2, "0")}:${secs
-          .toString()
-          .padStart(2, "0")}`
+        `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
       );
 
     }, 1000);
+
   }
 
-  return () => clearInterval(interval);
+  return () => {
+    if (interval) {
+      clearInterval(interval);
+    }
+  };
 
-}, [isCheckedIn, checkInTime]);
+}, [
+  isCheckedIn,
+  checkInTime,
+  isLunchBreak,
+  isTeaBreak,
+  totalLunchSeconds,
+  totalTeaSeconds
+]);
 
 
 useEffect(() => {
@@ -983,10 +1263,363 @@ const initials =
       leave.status === "Pending"
   ).length;
 
+  useEffect(() => {
+  const userId = localStorage.getItem("user_id");
+
+  if (!userId) return;
+
+  fetch(
+    `http://10.1.8.103:5000/api/attendance/history/${userId}`
+  )
+    .then((res) => res.json())
+    .then((data) => {
+      setAttendanceData(data);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+
+}, []);
+
+
+  useEffect(()=>{
+    setBirthdayModal(true)
+  })
+
+// useEffect(() => {
+
+//   const userId =
+//     localStorage.getItem("user_id");
+
+//   if (!userId) return;
+
+//   if (birthdayEmployees.length === 0) return;
+
+//   const loginBirthdayShown =
+//     sessionStorage.getItem(
+//       `birthday_shown_${userId}`
+//     );
+
+//   if (!loginBirthdayShown) {
+
+//     setBirthdayModal(true);
+
+//     sessionStorage.setItem(
+//       `birthday_shown_${userId}`,
+//       "true"
+//     );
+
+//   }
+
+// }, [birthdayEmployees]);
+
+const handleLogout = () => {
+
+  const userId =
+    localStorage.getItem("user_id");
+
+  sessionStorage.removeItem(
+    `birthday_shown_${userId}`
+  );
+
+  localStorage.clear();
+
+};
+
+const sendBirthdayWish = async (emp: any) => {
+
+  const senderName =
+    localStorage.getItem("full_name");
+
+  await fetch(
+    "http://10.1.8.103:5000/api/communications",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+
+        employee_id: emp.id,
+
+        employee_name:
+          `${emp.first_name} ${emp.last_name}`,
+
+        receiver_id: emp.user_id,
+
+        message_type: "employee",
+
+        created_by: senderName,
+
+        message:
+          `🎂 Happy Birthday ${emp.first_name}! Wishing you happiness, success and prosperity. 🎉`
+      })
+    }
+  );
+};
+
 
 
   return (
+
+    
     <div className="min-h-screen bg-gray-100">
+
+      
+      {birthdayModal && birthdayEmployees.length > 0 && (
+
+<div className="fixed top-5 right-5 z-[9999] w-[380px]">
+
+  {birthdayEmployees.some(
+    (emp: any) => emp.id === currentEmployee?.id
+  ) ? (
+
+    /* CURRENT USER BIRTHDAY */
+
+    <div className="
+      bg-white
+      rounded-3xl
+      shadow-2xl
+      border
+      border-pink-200
+      overflow-hidden
+    ">
+
+      <div className="
+        bg-gradient-to-r
+        from-pink-500
+        via-purple-500
+        to-orange-400
+        px-5
+        py-4
+        flex
+        justify-between
+        items-center
+      ">
+
+        <h2 className="text-white font-bold text-lg">
+          🎂 Happy Birthday
+        </h2>
+
+        <button
+          onClick={() => setBirthdayModal(false)}
+          className="
+            text-white
+            text-xl
+            font-bold
+            hover:scale-110
+            transition-all
+          "
+        >
+          ✕
+        </button>
+
+      </div>
+
+      <div className="p-6 text-center">
+
+        <img
+          src={`http://10.1.8.103:5000/api/employees/image/${currentEmployee?.id}`}
+          alt="Birthday"
+          className="
+            w-24
+            h-24
+            rounded-full
+            object-cover
+            border-4
+            border-pink-300
+            mx-auto
+            shadow-xl
+          "
+          onError={(e) => {
+            e.currentTarget.src =
+            "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+          }}
+        />
+
+        <h3 className="
+          mt-4
+          text-xl
+          font-bold
+          text-slate-800
+        ">
+          {user?.full_name}
+        </h3>
+
+        <p className="
+          mt-2
+          text-sm
+          text-slate-600
+        ">
+          Wishing you happiness,
+          success and prosperity.
+        </p>
+
+        <div className="
+          mt-4
+          bg-pink-50
+          border
+          border-pink-200
+          rounded-xl
+          p-3
+        ">
+          🎉 Have a wonderful year ahead!
+        </div>
+
+      </div>
+
+    </div>
+
+  ) : (
+
+    /* OTHER EMPLOYEE BIRTHDAY */
+
+    <div className="
+      bg-white
+      rounded-3xl
+      shadow-2xl
+      border
+      border-pink-200
+      overflow-hidden
+    ">
+
+      <div className="
+        bg-gradient-to-r
+        from-pink-500
+        to-orange-400
+        px-5
+        py-4
+        flex
+        justify-between
+        items-center
+      ">
+
+        <h2 className="
+          text-white
+          font-bold
+          text-lg
+        ">
+          🎉 Today's Birthdays
+        </h2>
+
+        <button
+          onClick={() => setBirthdayModal(false)}
+          className="
+            text-white
+            text-xl
+            font-bold
+          "
+        >
+          ✕
+        </button>
+
+      </div>
+
+      <div className="
+        max-h-[350px]
+        overflow-y-auto
+        p-4
+        space-y-3
+      ">
+
+        {birthdayEmployees.map((emp: any) => (
+
+          <div
+            key={emp.id}
+            className="
+              flex
+              items-center
+              gap-3
+              p-3
+              rounded-2xl
+              bg-pink-50
+              border
+              border-pink-100
+            "
+          >
+
+            <img
+              src={`http://10.1.8.103:5000/api/employees/image/${emp.id}`}
+              alt={emp.first_name}
+              className="
+                w-14
+                h-14
+                rounded-full
+                object-cover
+                border-2
+                border-pink-300
+              "
+              onError={(e) => {
+                e.currentTarget.src =
+                "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+              }}
+            />
+
+            <div className="flex-1">
+
+              <h3 className="
+                font-semibold
+                text-slate-800
+              ">
+                {emp.first_name} {emp.last_name}
+              </h3>
+
+              <p className="
+                text-xs
+                text-slate-500
+              ">
+                {emp.designation}
+              </p>
+
+              <p className="
+                text-xs
+                text-pink-600
+                font-medium
+              ">
+                🎂 Birthday Today
+              </p>
+
+            </div>
+<button
+  onClick={() => sendBirthdayWish(emp)}
+  className="
+    bg-pink-500
+    hover:bg-pink-600
+    text-white
+    px-3
+    py-2
+    rounded-xl
+    text-xs
+    font-semibold
+  "
+>
+  Wishes
+</button>
+
+          </div>
+
+        ))}
+
+      </div>
+
+      <div className="
+        text-center
+        text-xs
+        text-slate-400
+        py-3
+        border-t
+      ">
+        — S4 Carlisle Publishing Services
+      </div>
+
+    </div>
+
+  )}
+
+</div>
+
+)}
       
 
       {/* Header */}
@@ -1070,161 +1703,175 @@ const initials =
             <>
               {/* Welcome Card */}
               <motion.div variants={itemVariants}>
-  <div className="relative">
+  <div className="w-full max-w-10xl bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
 
-  {/* Floating Profile */}
-  <div className="absolute -top-5 left-[-10px] z-20">
-  <div className="w-[120px] h-[120px] rounded-2xl overflow-hidden border-4 border-white shadow-lg bg-white">
-    <img
-      src={
-        currentEmployee?.id
-          ? `http://10.1.8.103:5000/api/employees/image/${currentEmployee.id}`
-          : "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-      }
-      alt="Employee Profile"
-      className="w-full h-full object-cover"
-      onError={(e) => {
-        e.currentTarget.src =
-          "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-      }}
-    />
-  </div>
-</div>
-
-  {/* Main Card */}
-  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-6 py-4 pt-8">
-
-    {/* Header */}
-    <div className="flex justify-between items-start">
-
-      <div className="ml-24">
-        <h2 className="text-3xl font-bold text-gray-800">
-          Hi, {user?.full_name || "Employee"}!
+  {/* Employee Header */}
+  <div className="px-6 py-5 flex items-center justify-between border-b border-gray-100">
+    <div className="flex items-center gap-4 h-[10px]">
+      <div className="w-14 h-14 rounded-2xl overflow-hidden border border-gray-200 flex-shrink-0">
+        <img
+          src={
+            currentEmployee?.id
+              ? `http://10.1.8.103:5000/api/employees/image/${currentEmployee.id}`
+              : "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+          }
+          alt="profile"
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            e.currentTarget.src = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+          }}
+        />
+      </div>
+      <div>
+        <h2 className="text-lg font-bold text-gray-900">
+          {user?.full_name || "Employee Name"}
         </h2>
-
-        <p className="text-sm text-gray-500 mt-1">
-          {user?.role || "Employee"} • {user?.team || "Pre-Editing"}
-        </p>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">
+            {user?.role || "Employee"}
+          </span>
+          <span className="text-gray-300 text-xs">|</span>
+          <span className="text-xs text-gray-500">
+            {user?.team || "Pre-Editing"}
+          </span>
+        </div>
       </div>
-
-      <div className="w-12 h-12 rounded-full bg-[#1985A1] flex items-center justify-center shadow-sm">
-        <span className="text-white text-base font-semibold">
-          {initials}
-        </span>
-      </div>
-
     </div>
 
-    {/* Attendance Box */}
-    <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl px-5 py-4">
+    {/* Live Status Badge */}
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold ${
+      isCheckedIn
+        ? "bg-green-50 border-green-200 text-green-700"
+        : "bg-gray-50 border-gray-200 text-gray-500"
+    }`}>
+      <div className={`w-2 h-2 rounded-full ${isCheckedIn ? "bg-green-500" : "bg-gray-400"}`} />
+      {isCheckedIn ? "On Shift" : "Off Shift"}
+    </div>
+  </div>
 
-      <div className="flex justify-between items-center">
+  {/* Three Column Stats */}
+  <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
 
-        <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            Working Hours
+    {/* Working Hours */}
+    <div className="px-6 py-5">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-3">
+        Working Hours
+      </p>
+      <p className="text-2xl font-bold font-mono text-gray-900 leading-none tracking-tight">
+        {timer}
+      </p>
+      {checkInTime && (
+        <p className="text-xs text-gray-400 mt-2">
+          Since{" "}
+          <span className="text-gray-700 font-medium">
+            {checkInTime.toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+        </p>
+      )}
+    </div>
+
+    {/* Lunch Duration */}
+    <div className="px-6 py-5">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-3">
+        Lunch Break
+      </p>
+      <p className="text-2xl font-bold font-mono text-gray-900 leading-none">
+        {Math.floor(totalLunchSeconds / 60)}
+        <span className="text-lg font-medium text-gray-400 ml-1">min</span>
+      </p>
+      <p className="text-xs text-gray-400 mt-2">
+        {isLunchBreak
+          ? <span className="text-orange-600 font-medium">● Break running</span>
+          : "Lunch break duration"}
+      </p>
+    </div>
+
+    {/* Tea Duration */}
+    <div className="px-6 py-5">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-3">
+        Tea Break
+      </p>
+      <p className="text-2xl font-bold font-mono text-gray-900 leading-none">
+        {Math.floor(totalTeaSeconds / 60)}
+        <span className="text-lg font-medium text-gray-400 ml-1">min</span>
+      </p>
+      <p className="text-xs text-gray-400 mt-2">
+        {isTeaBreak
+          ? <span className="text-green-600 font-medium">● Break running</span>
+          : "Tea break duration"}
+      </p>
+    </div>
+  </div>
+
+  {/* Total Break Row */}
+  <div className="px-6 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+    <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
+      Total Break Time
+    </p>
+    <p className="text-sm font-bold text-gray-900">
+      {Math.floor((totalLunchSeconds + totalTeaSeconds) / 60)} min
+    </p>
+  </div>
+
+  {/* Active Break Alerts */}
+  {(isLunchBreak || isTeaBreak) && (
+    <div className="px-6 py-3 border-b border-gray-100 flex flex-col gap-2">
+      {isLunchBreak && (
+        <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+          <span className="text-sm">🍱</span>
+          <p className="text-xs text-orange-700 flex-1">
+            Lunch break is active — click <strong>Stop Lunch</strong> before resuming work.
           </p>
-
-          <h3 className="text-4xl font-bold font-mono text-gray-800 mt-1">
-            {timer}
-          </h3>
-
-          {checkInTime && (
-            <p className="text-sm text-gray-500 mt-1">
-              Since{" "}
-              <span className="font-medium text-gray-700">
-                {checkInTime.toLocaleTimeString("en-US", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-            </p>
-          )}
-        </div>
-
-        <button
-          onClick={isCheckedIn ? handleCheckOut : handleCheckIn}
-          className={`px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-all ${
-            isCheckedIn
-              ? "bg-red-500 hover:bg-red-600"
-              : "bg-[#1985A1] hover:bg-[#146c85]"
-          }`}
-        >
-          {isCheckedIn ? "Check Out" : "Check In"}
-        </button>
-
-      </div>
-
-      {/* Status */}
-      <div className="flex items-center gap-2 mt-3">
-        <div
-          className={`w-2.5 h-2.5 rounded-full ${
-            isCheckedIn
-              ? "bg-green-500"
-              : "bg-gray-400"
-          }`}
-        />
-        <span className="text-sm text-gray-600">
-          {isCheckedIn
-            ? "Checked In"
-            : "Not Checked In"}
-        </span>
-      </div>
-
-      {/* Break Buttons */}
-      {isCheckedIn && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
-
-          <div className="grid grid-cols-2 gap-3">
-
-            <button
-              onClick={handleLunchBreak}
-              disabled={isLunchTaken}
-              className={`py-2.5 rounded-lg text-sm font-medium transition-all ${
-                isLunchTaken
-                  ? "bg-green-50 text-green-700 border border-green-200"
-                  : "bg-white border border-gray-200 hover:bg-gray-50"
-              }`}
-            >
-              {isLunchTaken
-                ? "✓ Lunch Taken"
-                : "Lunch Break (30m)"}
-            </button>
-
-            <button
-              onClick={handleTeaBreak}
-              disabled={isTeaTaken}
-              className={`py-2.5 rounded-lg text-sm font-medium transition-all ${
-                isTeaTaken
-                  ? "bg-green-50 text-green-700 border border-green-200"
-                  : "bg-white border border-gray-200 hover:bg-gray-50"
-              }`}
-            >
-              {isTeaTaken
-                ? "✓ Tea Taken"
-                : "Tea Break (30m)"}
-            </button>
-
-          </div>
-
-          {(isLunchTaken || isTeaTaken) && (
-            <div className="mt-3 flex justify-between items-center bg-white border border-gray-200 rounded-lg px-4 py-2">
-              <span className="text-sm text-gray-600">
-                Total Break
-              </span>
-
-              <span className="font-semibold text-gray-800">
-                {(isLunchTaken ? 30 : 0) +
-                  (isTeaTaken ? 30 : 0)} min
-              </span>
-            </div>
-          )}
-
         </div>
       )}
-
+      {isTeaBreak && (
+        <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2">
+          <span className="text-sm">☕</span>
+          <p className="text-xs text-yellow-700 flex-1">
+            Tea break is active — click <strong>Stop Tea</strong> before resuming work.
+          </p>
+        </div>
+      )}
     </div>
+  )}
 
+  {/* Action Buttons */}
+  <div className="px-6 py-4 grid grid-cols-3 gap-3">
+    <button
+      onClick={isCheckedIn ? handleCheckOut : handleCheckIn}
+      className={`py-3 rounded-xl text-sm font-bold text-white transition-all ${
+        isCheckedIn
+          ? "bg-red-500 hover:bg-red-600"
+          : "bg-gray-900 hover:bg-gray-700"
+      }`}
+    >
+      {isCheckedIn ? "Check Out" : "Check In"}
+    </button>
+
+    <button
+      onClick={handleLunchBreak}
+      className={`py-3 rounded-xl text-sm font-bold border transition-all ${
+        isLunchBreak
+          ? "bg-red-50 border-red-300 text-red-600 hover:bg-red-100"
+          : "bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
+      }`}
+    >
+      {isLunchBreak ? "⏹ Stop Lunch" : "🍱 Lunch Break"}
+    </button>
+
+    <button
+      onClick={handleTeaBreak}
+      className={`py-3 rounded-xl text-sm font-bold border transition-all ${
+        isTeaBreak
+          ? "bg-red-50 border-red-300 text-red-600 hover:bg-red-100"
+          : "bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+      }`}
+    >
+      {isTeaBreak ? "⏹ Stop Tea" : "☕ Tea Break"}
+    </button>
   </div>
 
 </div>
@@ -1409,6 +2056,7 @@ const initials =
                       <tr>
                         <th className="text-left p-3 font-semibold text-gray-700 text-xs uppercase">Task ID</th>
                         <th className="text-left p-3 font-semibold text-gray-700 text-xs uppercase">Project</th>
+                        <th className="text-left p-3 font-semibold text-gray-700 text-xs uppercase">Complexity</th>
                         <th className="text-left p-3 font-semibold text-gray-700 text-xs uppercase">Assigned</th>
                         <th className="text-left p-3 font-semibold text-gray-700 text-xs uppercase">Due Date</th>
                         <th className="text-left p-3 font-semibold text-gray-700 text-xs uppercase">Priority</th>
@@ -1424,6 +2072,7 @@ const initials =
                             <p className="font-medium">{task.projectName}</p>
                             <p className="text-xs text-gray-500 truncate max-w-xs">{task.description}</p>
                           </td>
+                          <td className="p-3 text-sm text-gray-700">{task.complexity}</td>
                           <td className="p-3 text-sm text-gray-700">{task.assignedDate}</td>
                           <td className="p-3 text-sm text-gray-700">{task.dueDate}</td>
                           <td className="p-3">
@@ -1499,7 +2148,7 @@ const initials =
 
     {/* Leave Balance Card */}
     <motion.div variants={itemVariants} className="mb-6">
-      <div className="bg-[#1985A1] rounded-xl p-6 text-white shadow-lg">
+      <div className="bg-white rounded-xl p-6 text-black shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Leave Balance</h3>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-80">
@@ -1508,29 +2157,29 @@ const initials =
           </svg>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-            <p className="text-purple-200 text-xs mb-1 font-medium">Sick Leave</p>
+          <div className="bg-gray-200 rounded-lg p-4 backdrop-blur-sm">
+            <p className="text-black text-xs mb-1 font-medium">Sick Leave</p>
 <p className="text-3xl font-bold">
   {currentEmployee?.sick_leave || 0}
-</p>            <p className="text-purple-200 text-xs mt-1">days remaining</p>
+</p>            <p className="text-black text-xs mt-1">days remaining</p>
           </div>
-          <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-            <p className="text-purple-200 text-xs mb-1 font-medium">Casual Leave</p>
+          <div className="bg-gray-200 rounded-lg p-4 backdrop-blur-sm">
+            <p className="text-black text-xs mb-1 font-medium">Casual Leave</p>
 <p className="text-3xl font-bold">
   {currentEmployee?.casual_leave || 0}
-</p>            <p className="text-purple-200 text-xs mt-1">days remaining</p>
+</p>            <p className="text-black text-xs mt-1">days remaining</p>
           </div>
-          <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-            <p className="text-purple-200 text-xs mb-1 font-medium">Earned Leave</p>
+          <div className="bg-gray-200 rounded-lg p-4 backdrop-blur-sm">
+            <p className="text-black text-xs mb-1 font-medium">Earned Leave</p>
 <p className="text-3xl font-bold">
   {currentEmployee?.earned_leave || 0}
-</p>            <p className="text-purple-200 text-xs mt-1">days remaining</p>
+</p>            <p className="text-black text-xs mt-1">days remaining</p>
           </div>
-          <div className="bg-white/20 rounded-lg p-4 backdrop-blur-sm border border-white/20">
-            <p className="text-purple-100 text-xs mb-1 font-medium">Total Balance</p>
+          <div className="bg-gray-200 rounded-lg p-4 backdrop-blur-sm border border-white/20">
+            <p className="text-black text-xs mb-1 font-medium">Total Balance</p>
 <p className="text-3xl font-bold">
   {totalBalance}
-</p>            <p className="text-purple-100 text-xs mt-1">days remaining</p>
+</p>            <p className="text-black text-xs mt-1">days remaining</p>
           </div>
         </div>
       </div>
@@ -1900,137 +2549,134 @@ const initials =
 
         {/* Leave Approval Tracker */}
         {leaveRequests.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="22,12 18,12 15,21 9,3 6,12 2,12" />
-              </svg>
-              Leave Request Tracking
-            </h3>
+  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+    <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="22,12 18,12 15,21 9,3 6,12 2,12" />
+      </svg>
+      Leave Request Tracking
+    </h3>
 
-            {leaveRequests
-  .filter(
-    (leave: any) =>
-      leave.employee_id === currentEmployee?.id
-  )
-  .slice(0, 1)
-  .map((leave: any) => (
-              <div key={leave.id}>
-                <div className="flex items-center justify-between">
-                  {/* Applied */}
-                  <div className="flex flex-col items-center">
-                    <div className="w-14 h-14 rounded-full bg-green-500 text-white flex items-center justify-center shadow-lg">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <polyline points="20,6 9,17 4,12" />
-                      </svg>
-                    </div>
-                    <p className="text-sm font-semibold mt-3 text-gray-900">Applied</p>
-                    <p className="text-xs text-gray-500 mt-1">{leave.fromDate}</p>
-                  </div>
-
-                  <div className="flex-1 h-1 bg-gradient-to-r from-green-500 to-yellow-500 mx-3 rounded-full"></div>
-
-                  {/* Reporting Manager */}
-                  <div className="flex flex-col items-center">
-                    <div
-                      className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg
-                      ${
-                        leave.status === "Approved"
-                          ? "bg-green-500"
-                          : leave.status === "Rejected"
-                          ? "bg-red-500"
-                          : "bg-yellow-500"
-                      }`}
-                    >
-                      {leave.status === "Approved"
-                        ? (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                            <polyline points="20,6 9,17 4,12" />
-                          </svg>)
-                        : leave.status === "Rejected"
-                        ? (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>)
-                        : (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12,6 12,12 16,14" />
-                          </svg>)
-                      }
-                    </div>
-                    <p className="text-sm font-semibold mt-3 text-gray-900">Reporting Manager</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {leave.status === "Pending" ? "Awaiting" : leave.status}
-                    </p>
-                  </div>
-
-                  <div className="flex-1 h-1 bg-gradient-to-r from-yellow-500 to-green-500 mx-3 rounded-full"></div>
-
-                  {/* Final Status */}
-                  <div className="flex flex-col items-center">
-                    <div
-                      className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg
-                      ${
-                        leave.status === "Approved"
-                          ? "bg-green-500"
-                          : leave.status === "Rejected"
-                          ? "bg-red-500"
-                          : "bg-yellow-500"
-                      }`}
-                    >
-                      {leave.status === "Approved"
-                        ? (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                            <polyline points="20,6 9,17 4,12" />
-                          </svg>)
-                        : leave.status === "Rejected"
-                        ? (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>)
-                        : (<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12,6 12,12 16,14" />
-                          </svg>)
-                      }
-                    </div>
-                    <p className="text-sm font-semibold mt-3 text-gray-900">Final Status</p>
-                  </div>
-                </div>
-
-                <div className="mt-6 text-center">
-                  <span
-                    className={`inline-flex items-center px-5 py-2.5 rounded-full text-sm font-bold border shadow-sm
-                    ${
-                      leave.status === "Approved"
-                        ? "bg-green-100 text-green-700 border-green-300"
-                        : leave.status === "Rejected"
-                        ? "bg-red-100 text-red-700 border-red-300"
-                        : "bg-yellow-100 text-yellow-700 border-yellow-300"
-                    }`}
-                  >
-                    {leave.status === "Approved" && (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="mr-2">
-                        <polyline points="20,6 9,17 4,12" />
-                      </svg>
-                    )}
-                    {leave.status === "Rejected" && (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="mr-2">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    )}
-                    {leave.status === "Pending" && (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mr-2">
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12,6 12,12 16,14" />
-                      </svg>
-                    )}
-                    Current Status: {leave.status}
-                  </span>
-                </div>
+    {leaveRequests
+      .filter((leave: any) => leave.employee_id === currentEmployee?.id)
+      .slice(0, 1)
+      .map((leave: any) => (
+        <div key={leave.id}>
+          <div className="flex items-center justify-between">
+            {/* Applied */}
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center shadow-md">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <polyline points="20,6 9,17 4,12" />
+                </svg>
               </div>
-            ))}
+              <p className="text-xs font-semibold mt-2 text-gray-900">Applied</p>
+              <p className="text-xs text-gray-500 mt-0.5">{leave.fromDate}</p>
+            </div>
+
+            <div className="flex-1 h-1 bg-gradient-to-r from-green-500 to-yellow-500 mx-2 rounded-full"></div>
+
+            {/* Reporting Manager */}
+            <div className="flex flex-col items-center">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-md
+                ${
+                  leave.status === "Approved"
+                    ? "bg-green-500"
+                    : leave.status === "Rejected"
+                    ? "bg-red-500"
+                    : "bg-yellow-500"
+                }`}
+              >
+                {leave.status === "Approved"
+                  ? (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <polyline points="20,6 9,17 4,12" />
+                    </svg>)
+                  : leave.status === "Rejected"
+                  ? (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>)
+                  : (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12,6 12,12 16,14" />
+                    </svg>)
+                }
+              </div>
+              <p className="text-xs font-semibold mt-2 text-gray-900">Reporting Manager</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {leave.status === "Pending" ? "Awaiting" : leave.status}
+              </p>
+            </div>
+
+            <div className="flex-1 h-1 bg-gradient-to-r from-yellow-500 to-green-500 mx-2 rounded-full"></div>
+
+            {/* Final Status */}
+            <div className="flex flex-col items-center">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-md
+                ${
+                  leave.status === "Approved"
+                    ? "bg-green-500"
+                    : leave.status === "Rejected"
+                    ? "bg-red-500"
+                    : "bg-yellow-500"
+                }`}
+              >
+                {leave.status === "Approved"
+                  ? (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <polyline points="20,6 9,17 4,12" />
+                    </svg>)
+                  : leave.status === "Rejected"
+                  ? (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>)
+                  : (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12,6 12,12 16,14" />
+                    </svg>)
+                }
+              </div>
+              <p className="text-xs font-semibold mt-2 text-gray-900">Final Status</p>
+            </div>
           </div>
-        )}
+
+          <div className="mt-4 text-center">
+            <span
+              className={`inline-flex items-center px-4 py-2 rounded-full text-xs font-bold border shadow-sm
+              ${
+                leave.status === "Approved"
+                  ? "bg-green-100 text-green-700 border-green-300"
+                  : leave.status === "Rejected"
+                  ? "bg-red-100 text-red-700 border-red-300"
+                  : "bg-yellow-100 text-yellow-700 border-yellow-300"
+              }`}
+            >
+              {leave.status === "Approved" && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="mr-1.5">
+                  <polyline points="20,6 9,17 4,12" />
+                </svg>
+              )}
+              {leave.status === "Rejected" && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="mr-1.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              )}
+              {leave.status === "Pending" && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mr-1.5">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12,6 12,12 16,14" />
+                </svg>
+              )}
+              Current Status: {leave.status}
+            </span>
+          </div>
+        </div>
+      ))}
+  </div>
+)}
 
         {/* Leave History Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

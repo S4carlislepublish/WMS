@@ -3,10 +3,13 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+import {socket} from "../services/socket";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   HomeIcon,
+  UserIcon,
+  ChatBubbleLeftIcon,
   FolderIcon,
   UserGroupIcon,
   Cog6ToothIcon,
@@ -23,6 +26,7 @@ import {
   PresentationChartLineIcon,
   ChatBubbleLeftRightIcon,
   PaperAirplaneIcon,
+  BellIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 
@@ -48,17 +52,59 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({
   const [showReportMenu, setShowReportMenu] = useState(false);
   const reportMenuRef = useRef<HTMLDivElement | null>(null);
   const [showAI, setShowAI] = useState(false);
+  const [showCommunication, setShowCommunication] =
+  useState(false);
+
+  const [activeTab, setActiveTab] = useState<
+  "office" | "employee"
+>("employee");
+const [officeText, setOfficeText] =
+  useState("");
+
+const canSendOfficeMessage =
+  user?.role === "HR" ||
+  user?.role === "Admin" ||
+  user?.role === "Super Admin";
+
+
+
+
+const [officeMessages, setOfficeMessages] =
+  useState([]);
+
+const [employeeMessages, setEmployeeMessages] = useState<any[]>([]);
+
+
+
+  
+
+  const [employees, setEmployees] = useState<any[]>([]);
+
+  const [realtimeMessages,setRealtimeMessages] = useState<any[]>([]);
+
+const [showMentionDropdown, setShowMentionDropdown] =
+  useState(false);
+
+const [mentionResults, setMentionResults] =
+  useState<any[]>([]);
+
+
   
   // Real conversational state starts here
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content:
-        "👋 Hello! I'm your WMS AI Assistant. I can help you dig into your live metrics, evaluate current workloads, or figure out what's lagging behind.\n\nTry checking out your workspace updates:\n• **Show overdue projects**\n• **Check employee workload**\n• **Generate SLA reports**\n\nWhat can I look into for you today?",
-      timestamp: new Date(),
-    },
-  ]);
+const [
+  selectedUser,
+  setSelectedUser
+] = useState<any>(null);
+
+const [
+  messageText,
+  setMessageText
+] = useState("");
+
+const [
+  messages,
+  setMessages
+] = useState<any[]>([]);
   const [userInput, setUserInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
@@ -68,6 +114,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({
     toast.success("Logged out successfully");
     navigate("/login");
   };
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -164,119 +211,111 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const getSidebarItems = () => {
+  const [showPopup, setShowPopup] =
+  useState(true);
+
+const [reportingEmployees, setReportingEmployees] =
+  useState([]);
+
+  useEffect(() => {
+
+  const loadEmployees = async () => {
+
+    const userId =
+      localStorage.getItem("user_id");
+
+    const response =
+      await fetch(
+        `http://10.1.8.103:5000/api/employees/reporting-employees/${userId}`
+      );
+
+    const data =
+      await response.json();
+
+    setReportingEmployees(data);
+
+  };
+
+  loadEmployees();
+
+}, []);
+
+
   // Admin & Super Admin
-  if (user?.role === "Admin" || user?.role === "Super Admin") {
+  const getNavigationItems = () => {
+
+  // Admin
+  if (user?.access_level === "admin") {
     return [
       { name: "Dashboard", icon: HomeIcon, path: "/dashboard" },
       { name: "Projects", icon: FolderIcon, path: "/projects" },
       { name: "Clients", icon: UserGroupIcon, path: "/clients" },
-         {
-      name: "Payroll",
-      icon: BanknotesIcon,
-      path: "/payroll",
-    },
+      { name: "Payroll", icon: BanknotesIcon, path: "/payroll" },
       { name: "Settings", icon: Cog6ToothIcon, path: "/settings" },
       { name: "Calendar", icon: CalendarIcon, path: "/calendar" },
       { name: "Reports", icon: ChartBarIcon, path: "/reports" },
     ];
   }
 
-  // Project Manager
-  if (user?.role === "Project Manager") {
-  return [
-    { name: "Dashboard", icon: HomeIcon, path: "/dashboard" },
-
-    { name: "Projects", icon: FolderIcon, path: "/projects" },
-
-    {
-      name: "Team Management",
-      icon: UserGroupIcon,
-      path: "/manager-dashboard",
-    },
-
-    { name: "Calendar", icon: CalendarIcon, path: "/calendar" },
-
-    { name: "Reports", icon: ChartBarIcon, path: "/reports" },
-  ];
-}
-
-  // Pre-Editing
-  if (user?.role === "Pre-Editing") {
+  // Manager
+  if (user?.access_level === "manager") {
     return [
-          { name: "Dashboard", icon: HomeIcon, path: "/employee-dashboard" },
-
-      { name: "Assigned Projects", icon: FolderIcon, path: "/pre-editing" },
+      { name: "Dashboard", icon: HomeIcon, path: "/dashboard" },
+      { name: "Projects", icon: FolderIcon, path: "/projects" },
+      {
+        name: "Team Management",
+        icon: UserGroupIcon,
+        path: "/manager-dashboard",
+      },
+      { name: "Calendar", icon: CalendarIcon, path: "/calendar" },
       { name: "Reports", icon: ChartBarIcon, path: "/reports" },
     ];
   }
-
-  // Copywriting
-  if (user?.role === "Copywriting") {
-    return [
-          { name: "Dashboard", icon: HomeIcon, path: "/employee-dashboard" },
-
-      { name: "Copywriting", icon: FolderIcon, path: "/copywriting" },
-      { name: "Reports", icon: ChartBarIcon, path: "/reports" },
-    ];
-  }
-
-  // QA
-  if (user?.role === "Quality Analyst (QA)") {
-    return [
-          { name: "Dashboard", icon: HomeIcon, path: "/employee-dashboard" },
-
-      { name: "QA Review", icon: FolderIcon, path: "/qa" },
-      { name: "Reports", icon: ChartBarIcon, path: "/reports" },
-    ];
-  }
-
-
 
   // HR
-if (user?.role === "HR") {
+  if (user?.access_level === "hr") {
+    return [
+      { name: "Dashboard", icon: HomeIcon, path: "/dashboard" },
+      {
+        name: "HR Management",
+        icon: UserGroupIcon,
+        path: "/hrms",
+      },
+      {
+        name: "Payroll",
+        icon: BanknotesIcon,
+        path: "/payroll",
+      },
+      {
+        name: "Calendar",
+        icon: CalendarIcon,
+        path: "/calendar",
+      },
+      {
+        name: "Reports",
+        icon: ChartBarIcon,
+        path: "/reports",
+      },
+    ];
+  }
+
+  // Employee / User
   return [
     {
       name: "Dashboard",
       icon: HomeIcon,
-      path: "/dashboard",
+      path: "/employee-dashboard",
     },
-
-    {
-      name: "HR Management",
-      icon: UserGroupIcon,
-      path: "/hrms",
-    },
-
-    {
-      name: "Payroll",
-      icon: BanknotesIcon,
-      path: "/payroll",
-    },
-
-    {
-      name: "Calendar",
-      icon: CalendarIcon,
-      path: "/calendar",
-    },
-
     {
       name: "Reports",
       icon: ChartBarIcon,
       path: "/reports",
     },
   ];
-}
-
-  // Default
-  return [
-    { name: "Dashboard", icon: HomeIcon, path: "/dashboard" },
-    { name: "Projects", icon: FolderIcon, path: "/projects" },
-    { name: "Reports", icon: ChartBarIcon, path: "/reports" },
-  ];
 };
 
-  const sidebarItems = getSidebarItems();
+const sidebarItems = getNavigationItems();
+
 
   const reportLinks = [
     { name: "Schedule Report", icon: DocumentChartBarIcon, path: "/reports/schedule", state: { tab: "schedule" } },
@@ -291,8 +330,857 @@ if (user?.role === "HR") {
 const profileImageUrl =
   `http://10.1.8.103:5000/api/employees/image/${employeeId}`;
 
+  useEffect(() => {
+  fetchMessages();
+}, []);
+
+// ======================================
+// FETCH PRIVATE MESSAGES
+// ======================================
+
+const fetchMessages = async () => {
+
+  try {
+
+    const employeeId =
+      localStorage.getItem(
+        "employee_id"
+      );
+
+    console.log(
+      "Employee ID:",
+      employeeId
+    );
+
+    if (
+      !employeeId ||
+      employeeId === "null"
+    ) {
+
+      console.log(
+        "No employee id found"
+      );
+
+      return;
+
+    }
+
+    const response =
+      await fetch(
+        `http://10.1.8.103:5000/api/communications/employee/${employeeId}`
+      );
+
+    if (!response.ok) {
+
+      console.error(
+        "Failed:",
+        response.status
+      );
+
+      return;
+
+    }
+
+    const data =
+      await response.json();
+
+    console.log(
+      "Messages:",
+      data
+    );
+
+    setEmployeeMessages(
+      Array.isArray(data)
+        ? data
+        : []
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Fetch Messages Error:",
+      error
+    );
+
+    setEmployeeMessages([]);
+
+  }
+
+};
+
+
+// ======================================
+// LOAD ANNOUNCEMENTS
+// ======================================
+
+const loadAnnouncements =
+  async () => {
+
+    try {
+
+      const response =
+        await fetch(
+          "http://10.1.8.103:5000/api/communications/announcements"
+        );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data =
+        await response.json();
+
+      setOfficeMessages(
+        Array.isArray(data)
+          ? data
+          : []
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Announcement Error:",
+        error
+      );
+
+    }
+
+};
+
+useEffect(() => {
+
+  loadAnnouncements();
+
+}, []);
+
+
+// ======================================
+// SEND ANNOUNCEMENT
+// ======================================
+
+const sendAnnouncement =
+  async () => {
+
+    if (
+      !officeText.trim()
+    ) {
+      return;
+    }
+
+    try {
+
+      const employeeId =
+        localStorage.getItem(
+          "employee_id"
+        );
+
+      const response =
+        await fetch(
+          "http://10.1.8.103:5000/api/communications/",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify({
+
+              employee_id:
+                employeeId
+                  ? Number(employeeId)
+                  : null,
+
+              receiver_id:
+                null,
+
+              employee_name:
+                user?.full_name ||
+                "HR Admin",
+
+              message_type:
+                "announcement",
+
+              message:
+                officeText,
+
+              created_by:
+                user?.full_name ||
+                "HR Admin"
+
+            })
+
+          }
+        );
+
+      const data =
+        await response.json();
+
+      console.log(
+        "Announcement:",
+        data
+      );
+
+      setOfficeText("");
+
+      loadAnnouncements();
+
+    } catch (error) {
+
+      console.error(
+        "Send Announcement Error:",
+        error
+      );
+
+    }
+
+};
+
+
+// ======================================
+// SEND PRIVATE MESSAGE
+// ======================================
+
+const sendMessage =
+  async () => {
+
+    if (!selectedUser) {
+
+      alert(
+        "Please select a user"
+      );
+
+      return;
+
+    }
+
+    if (
+      !messageText.trim()
+    ) {
+      return;
+    }
+
+    try {
+
+      const employeeId =
+        localStorage.getItem(
+          "employee_id"
+        );
+
+      const response =
+        await fetch(
+          "http://10.1.8.103:5000/api/communications/",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify({
+
+              employee_id:
+                employeeId
+                  ? Number(employeeId)
+                  : null,
+
+              receiver_id:
+                selectedUser.id,
+
+              employee_name:
+                user?.full_name,
+
+              message_type:
+                "employee",
+
+              message:
+                messageText,
+
+              created_by:
+                user?.full_name
+
+            })
+
+          }
+        );
+
+      const data =
+        await response.json();
+
+      console.log(
+        "Private Message:",
+        data
+      );
+
+      setMessageText("");
+
+      fetchMessages();
+
+    } catch (error) {
+
+      console.error(
+        "Send Message Error:",
+        error
+      );
+
+    }
+
+};
+
+
+
+
+// ======================================
+// INITIAL LOAD
+// ======================================
+
+useEffect(() => {
+
+  fetchMessages();
+
+}, []);
+
+
+// const handleSendRealtimeMessage = () => {
+
+//   if (!selectedUser) {
+
+//     alert(
+//       "Please select a user using @mention"
+//     );
+
+//     return;
+//   }
+
+//   if (!messageText.trim()) {
+//     return;
+//   }
+
+//   socket.emit(
+//     "send_message",
+//     {
+//       sender_id:
+//         Number(employeeId),
+
+//       sender_name:
+//         user?.full_name,
+
+//       receiver_id:
+//         selectedUser.id,
+
+//       message:
+//         messageText,
+
+//       created_at:
+//         new Date()
+//     }
+//   );
+
+//   setRealtimeMessages(
+//     (prev) => [
+//       ...prev,
+//       {
+//         sender_id:
+//           Number(employeeId),
+
+//         sender_name:
+//           user?.full_name,
+
+//         receiver_id:
+//           selectedUser.id,
+
+//         message:
+//           messageText,
+
+//         created_at:
+//           new Date()
+//       }
+//     ]
+//   );
+
+//   setMessageText("");
+// };
+
+// const [employees, setEmployees] = useState<any[]>([]);
+// const [messages, setMessages] = useState<any[]>([]);
+// const [officeMessages, setOfficeMessages] = useState<any[]>([]);
+// const [realtimeMessages, setRealtimeMessages] = useState<any[]>([]);
+// const [officeText, setOfficeText] = useState("");
+
+
+// ======================================
+// LOAD EMPLOYEES
+// ======================================
+
+const fetchEmployees = async () => {
+  try {
+
+    const res = await fetch(
+      "http://10.1.8.103:5000/api/employees"
+    );
+
+    const data = await res.json();
+
+    setEmployees(
+      Array.isArray(data)
+        ? data
+        : []
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Employees Error:",
+      error
+    );
+
+  }
+};
+
+
+// ======================================
+// LOAD PRIVATE MESSAGES
+// ======================================
+
+const loadMessages = async (
+  employeeId: string
+) => {
+
+  try {
+
+    const response =
+      await fetch(
+        `http://10.1.8.103:5000/api/communications/employee/${employeeId}`
+      );
+
+    const data =
+      await response.json();
+
+    setMessages(
+      Array.isArray(data)
+        ? data
+        : []
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Messages Error:",
+      error
+    );
+
+  }
+
+};
+
+
+// ======================================
+// INITIAL LOAD
+// ======================================
+
+useEffect(() => {
+
+  const employeeId =
+    localStorage.getItem(
+      "employee_id"
+    );
+
+  console.log(
+    "Employee ID:",
+    employeeId
+  );
+
+  if (
+    employeeId &&
+    employeeId !== "null"
+  ) {
+
+    loadMessages(
+      employeeId
+    );
+
+  }
+
+  fetchEmployees();
+
+}, []);
+
+
+// ======================================
+// SOCKET MESSAGE
+// ======================================
+
+useEffect(() => {
+
+  socket.on(
+    "receive_message",
+    (message) => {
+
+      setRealtimeMessages(
+        (prev) => [
+          ...prev,
+          message
+        ]
+      );
+
+    }
+  );
+
+  return () => {
+
+    socket.off(
+      "receive_message"
+    );
+
+  };
+
+}, []);
+
+
+// ======================================
+// LOAD ANNOUNCEMENTS
+// ======================================
+
+const loadOfficeMessages =
+  async () => {
+
+    try {
+
+      const res =
+        await fetch(
+          "http://10.1.8.103:5000/api/communications/announcements"
+        );
+
+      const data =
+        await res.json();
+
+      setOfficeMessages(
+        Array.isArray(data)
+          ? data
+          : []
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Office Messages Error:",
+        error
+      );
+
+    }
+
+};
+
+useEffect(() => {
+
+  loadOfficeMessages();
+
+}, []);
+
+
+// ======================================
+// SEND ANNOUNCEMENT
+// ======================================
+
+const sendOfficeMessage =
+  async () => {
+
+    if (
+      !officeText.trim()
+    ) {
+      return;
+    }
+
+    try {
+
+      const employeeId =
+        localStorage.getItem(
+          "employee_id"
+        );
+
+      await fetch(
+        "http://10.1.8.103:5000/api/communications/",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body: JSON.stringify({
+
+            employee_id:
+              employeeId
+                ? Number(employeeId)
+                : null,
+
+            receiver_id:
+              null,
+
+            employee_name:
+              user?.full_name ||
+              "HR",
+
+            message_type:
+              "announcement",
+
+            message:
+              officeText,
+
+            created_by:
+              user?.full_name ||
+              "HR"
+
+          })
+
+        }
+      );
+
+      setOfficeText("");
+
+      loadOfficeMessages();
+
+    } catch (error) {
+
+      console.error(
+        "Send Office Message Error:",
+        error
+      );
+
+    }
+
+};
+
+const [hasNewMessage, setHasNewMessage] =
+  useState(false);
+
+const [lastMessageCount, setLastMessageCount] =
+  useState(0);
+
+  useEffect(() => {
+
+  if (
+    employeeMessages.length >
+    lastMessageCount
+  ) {
+
+    setHasNewMessage(true);
+
+  }
+
+  setLastMessageCount(
+    employeeMessages.length
+  );
+
+}, [employeeMessages]);
+
+
+
+
+
   return (
     <div className="min-h-screen bg-gray-900">
+      {showPopup &&
+reportingEmployees.length > 0 && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-[800px] max-w-full overflow-hidden">
+      
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="bg-white/20 p-2 rounded-lg">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-white">
+            Yesterday Attendance Summary
+          </h2>
+        </div>
+        
+        <button
+          onClick={() => setShowPopup(false)}
+          className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Table */}
+      <div className="p-6">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b-2 border-gray-100">
+              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
+                Name
+              </th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
+                Status
+              </th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
+                Check In
+              </th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
+                Check Out
+              </th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
+                Hours
+              </th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
+                Action
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {reportingEmployees.map(
+              (emp: any, idx: number) => (
+                <tr
+                  key={emp.employee_id}
+                  className={`
+                    border-b border-gray-50 hover:bg-gray-50 transition-colors
+                    ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-25'}
+                  `}
+                >
+                  <td className="py-3 px-4">
+  <div className="flex items-center gap-3">
+    
+    <img
+      src={
+        emp.profile_image
+          ? `data:image/jpeg;base64,${emp.profile_image}`
+          : "/default-avatar.png"
+      }
+      alt={emp.employee_name}
+      className="w-10 h-10 rounded-full object-cover border"
+    />
+
+    <div>
+      <p className="font-medium text-gray-900">
+        {emp.employee_name}
+      </p>
+      <p className="text-xs text-gray-500">
+        {emp.designation}
+      </p>
+    </div>
+
+  </div>
+</td>
+                  <td className="py-3 px-4">
+                    <span
+                      className={`
+                        inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
+                        ${
+                          emp.status === 'Present'
+                            ? 'bg-green-100 text-green-700'
+                            : emp.status === 'Absent'
+                            ? 'bg-red-100 text-red-700'
+                            : emp.status === 'Late'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }
+                      `}
+                    >
+                      {emp.status === 'Present' && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="mr-1">
+                          <polyline points="20,6 9,17 4,12" />
+                        </svg>
+                      )}
+                      {emp.status === 'Absent' && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="mr-1">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      )}
+                      {emp.status === 'Late' && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mr-1">
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12,6 12,12 16,14" />
+                        </svg>
+                      )}
+                      {emp.status}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12,6 12,12 16,14" />
+                      </svg>
+                      {emp.check_in}
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-500">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12,6 12,12 16,14" />
+                      </svg>
+                      {emp.check_out}
+                    </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="font-semibold text-gray-900">
+                      {emp.working_hours}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
+  <button
+    className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600"
+    onClick={() => viewAttendance(emp)}
+  >
+    View
+  </button>
+</td>
+                </tr>
+              )
+            )}
+          </tbody>
+        </table>
+
+        {/* Footer Stats */}
+        <div className="mt-6 flex gap-4">
+          <div className="bg-green-50 px-4 py-3 rounded-lg flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2">
+              <polyline points="20,6 9,17 4,12" />
+            </svg>
+            <span className="text-sm font-semibold text-green-700">
+              {reportingEmployees.filter(e => e.status === 'Present').length} Present
+            </span>
+          </div>
+          <div className="bg-red-50 px-4 py-3 rounded-lg flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+            <span className="text-sm font-semibold text-red-700">
+              {reportingEmployees.filter(e => e.status === 'Absent').length} Absent
+            </span>
+          </div>
+          <div className="bg-blue-50 px-4 py-3 rounded-lg flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4362EE" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+            </svg>
+            <span className="text-sm font-semibold text-blue-700">
+              Total: {reportingEmployees.length} Employees
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       {/* Mobile Header */}
       <div className="flex items-center justify-between border-b border-gray-700 bg-gray-800 px-4 py-3 lg:hidden">
         <button
@@ -462,6 +1350,344 @@ const profileImageUrl =
       </div>
 
       {/* AI Assistant Floating Button */}
+      <button
+  onClick={() =>
+    setShowCommunication(true)
+  }
+  className="
+    fixed
+    bottom-6
+    right-6
+    z-50
+    bg-blue-600
+    hover:bg-blue-700
+    text-white
+    rounded-full
+    p-4
+    shadow-xl
+  "
+>
+  <ChatBubbleLeftRightIcon
+    className="w-7 h-7"
+  />
+</button>
+
+{showCommunication && (
+  <div
+    className="
+      fixed
+      bottom-6
+      right-6
+      w-[480px]
+      h-[650px]
+      bg-gradient-to-br
+      from-gray-50
+      to-white
+      rounded-3xl
+      shadow-2xl
+      z-50
+      overflow-hidden
+      flex
+      flex-col
+      border
+      border-gray-200
+    "
+  >
+    {/* Header */}
+    <div className="flex border-b">
+
+  <button
+    onClick={() =>
+      setActiveTab("office")
+    }
+    className={`flex-1 p-3 font-semibold ${
+      activeTab === "office"
+        ? "bg-red-100 text-red-700"
+        : "bg-white"
+    }`}
+  >
+    📢 Announcement
+  </button>
+
+  <button
+    onClick={() =>
+      setActiveTab("employee")
+    }
+    className={`flex-1 p-3 font-semibold ${
+      activeTab === "employee"
+        ? "bg-blue-100 text-blue-700"
+        : "bg-white"
+    }`}
+  >
+    💬 Employee Messages
+  </button>
+
+</div>
+
+{activeTab === "office" && (
+
+<div className="flex flex-col flex-1">
+
+  {/* Messages */}
+
+  <div className="flex-1 p-4 overflow-y-auto">
+
+    {
+  officeMessages.map(
+    (msg: any) => (
+
+      <div
+        key={msg.id}
+        className="p-3 border-b"
+      >
+
+        <div className="font-semibold">
+          {msg.created_by}
+        </div>
+
+        <div>
+          {msg.message}
+        </div>
+
+      </div>
+
+    )
+  )
+}
+
+  </div>
+
+  {/* Only HR/Admin Can Send */}
+
+  {canSendOfficeMessage && (
+
+    <div className="border-t p-4">
+
+      <input
+        type="text"
+        value={officeText}
+        onChange={(e) =>
+          setOfficeText(
+            e.target.value
+          )
+        }
+        placeholder="Type office announcement..."
+        className="
+          w-full
+          border
+          rounded-xl
+          px-4
+          py-3
+        "
+      />
+
+      <button
+        onClick={sendOfficeMessage}
+        className="
+          mt-2
+          w-full
+          bg-red-600
+          hover:bg-red-700
+          text-white
+          rounded-xl
+          py-3
+        "
+      >
+        Send Announcement
+      </button>
+
+    </div>
+
+  )}
+
+</div>
+
+)}
+
+    
+
+    {/* Employee Messages - Chat Area */}
+    {activeTab === "employee" && (
+
+<div className="flex-1 p-4 overflow-y-auto">
+    <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+      <div className="flex items-center gap-2 mb-4">
+        <ChatBubbleLeftIcon className="w-5 h-5 text-blue-600" />
+        <h4 className="font-bold text-blue-700 text-sm">Employee Messages</h4>
+      </div>
+
+      <div className="space-y-4">
+        {Array.isArray(employeeMessages) &&
+employeeMessages.map((msg: any) => {
+          const myEmployeeId = Number(localStorage.getItem("employee_id"));
+          const isMyMessage = Number(msg.employee_id) === myEmployeeId;
+
+          return (
+            <div
+              key={msg.id}
+              className={`flex ${isMyMessage ? "justify-end" : "justify-start"}`}
+            >
+              <div className="flex flex-col max-w-[70%]">
+                {!isMyMessage && (
+                  <div className="text-xs text-gray-500 mb-1 ml-1">
+                    {msg.employee_name}
+                  </div>
+                )}
+                <div
+                  className={`
+                    px-4 py-3 rounded-2xl shadow-sm
+                    ${
+                      isMyMessage
+                        ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-md"
+                        : "bg-white text-gray-900 border border-gray-200 rounded-bl-md"
+                    }
+                  `}
+                >
+                  <div className="text-sm">{msg.message}</div>
+                </div>
+                {isMyMessage && (
+                  <div className="text-xs text-gray-400 mt-1 text-right mr-1">
+                    You
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+
+    {/* Input Section */}
+    <div className="border-t bg-white p-4">
+      {showMentionDropdown && (
+        <div
+          className="
+            absolute
+            bottom-20
+            left-4
+            right-4
+            bg-white
+            border
+            border-gray-200
+            rounded-xl
+            shadow-xl
+            max-h-40
+            overflow-y-auto
+            z-50
+          "
+        >
+          {mentionResults.length > 0
+            ? mentionResults.map((emp: any) => (
+                <div
+                  key={emp.id}
+                  onClick={() => {
+                    setSelectedUser(emp);
+                    setMessageText(
+                      messageText.replace(/@\w*$/, `@${emp.first_name} `)
+                    );
+                    setShowMentionDropdown(false);
+                  }}
+                  className="p-3 cursor-pointer hover:bg-blue-50 transition-colors flex items-center gap-3"
+                >
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <UserIcon className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">
+                      {emp.first_name} {emp.last_name}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      ID: {emp.employee_id}
+                    </div>
+                  </div>
+                </div>
+              ))
+            : (
+              <div className="p-3 text-gray-500 text-sm">No user found</div>
+            )}
+        </div>
+      )}
+
+      <div className="flex gap-3">
+        <div
+          style={{
+            position: "relative",
+            width: "100%"
+          }}
+        >
+          <input
+            type="text"
+            value={messageText}
+            onChange={(e) => {
+              const value = e.target.value;
+              setMessageText(value);
+              const match = value.match(/@(\w*)$/);
+
+              if (match) {
+                const keyword = match[1].toLowerCase();
+                const filtered = employees.filter(
+                  (emp: any) =>
+                    `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(
+                      keyword
+                    )
+                );
+                setMentionResults(filtered);
+                setShowMentionDropdown(true);
+              } else {
+                setShowMentionDropdown(false);
+              }
+            }}
+            placeholder="Type @name to mention someone..."
+            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none text-sm"
+          />
+
+          {selectedUser && (
+            <div
+              className="
+                absolute
+                bottom-full
+                left-0
+                mb-2
+                px-3
+                py-1.5
+                bg-blue-50
+                border
+                border-blue-200
+                rounded-lg
+                text-xs
+                font-semibold
+                text-blue-700
+              "
+            >
+              📤 Sending to: {selectedUser.first_name} {selectedUser.last_name}
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={() => {
+            if (!selectedUser) {
+              alert("Please select user using @mention");
+              return;
+            }
+            sendMessage();
+          }}
+          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white p-3 rounded-xl shadow-lg transition-all transform hover:scale-105"
+        >
+          <PaperAirplaneIcon className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="mt-2 text-xs text-gray-500">
+        💡 Tip: Type <span className="font-semibold text-blue-600">@</span> to mention an employee
+      </div>
+    </div>
+  </div>
+)}
+
+</div>
+
+)}
       
     </div>
   );

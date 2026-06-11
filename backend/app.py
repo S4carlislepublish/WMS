@@ -4,6 +4,13 @@ from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
 import os
 from flask import send_from_directory
+from flask_socketio import (
+    SocketIO
+)
+
+from socket_events import (
+    register_socket_events
+)
 
 
 load_dotenv()
@@ -20,10 +27,14 @@ from routes.dashboard import dashboard_bp
 from routes.employees import employees_bp
 from routes.attendance import attendance_bp
 from routes.leaves import leave_bp
-
+from routes.communications import communication_bp
 
 def create_app():
     app = Flask(__name__)
+    socketio = SocketIO(
+    app,
+    cors_allowed_origins="*"
+)
     CORS(
     app,
     resources={r"/api/*": {"origins": "*"}},
@@ -65,6 +76,10 @@ def create_app():
     app.register_blueprint(projects_bp, url_prefix='/api/projects')
     app.register_blueprint(workflow_bp, url_prefix='/api/workflow')
     app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
+    app.register_blueprint(
+    communication_bp,
+    url_prefix="/api/communications"
+)
 
     # Health check
     @app.route('/api/health')
@@ -97,11 +112,22 @@ def create_app():
         
     print(app.url_map)
 
+    register_socket_events(
+    socketio
+)
 
-    return app
+
+    return app, socketio
 
 
 if __name__ == '__main__':
-    app = create_app()
-    app.run(debug=True, host='0.0.0.0', port=5000)
 
+    app, socketio = create_app()
+
+    socketio.run(
+        app,
+        host="0.0.0.0",
+        port=5000,
+        debug=True,
+        allow_unsafe_werkzeug=True
+    )

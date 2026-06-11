@@ -16,6 +16,8 @@ class Attendance(db.Model):
         nullable=False
     )
 
+    # Check In / Check Out
+
     check_in = db.Column(
         db.DateTime,
         default=datetime.utcnow
@@ -26,22 +28,72 @@ class Attendance(db.Model):
         nullable=True
     )
 
+    # Lunch Break Status
+
     lunch_break = db.Column(
         db.Boolean,
         default=False
     )
+
+    lunch_start = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    lunch_end = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    lunch_minutes = db.Column(
+        db.Integer,
+        default=0
+    )
+
+    # Tea Break Status
 
     tea_break = db.Column(
         db.Boolean,
         default=False
     )
 
+    tea_start = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    tea_end = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    tea_minutes = db.Column(
+        db.Integer,
+        default=0
+    )
+
+    # Total Break Minutes
+
+    total_break_minutes = db.Column(
+        db.Integer,
+        default=0
+    )
+
+    # Total Working Hours
+
     total_hours = db.Column(
         db.Float,
         default=0
     )
 
+    # Attendance Date
+
     attendance_date = db.Column(
         db.Date,
-        default=datetime.utcnow().date
+        default=lambda: datetime.utcnow().date()
     )
+
+    status = db.Column(
+    db.String(20),
+    default="Absent"
+)

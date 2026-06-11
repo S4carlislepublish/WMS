@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, {useEffect, useMemo, useState } from "react";
 import {
   UsersIcon,
   CheckCircleIcon,
@@ -159,97 +159,256 @@ const managerNotifications = [
   },
 ];
 
+
+
+
 const ManagerDashboardPage = () => {
+
   const [activeTab, setActiveTab] = useState("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
-  const [teamMembers, setTeamMembers] = useState(initialTeamMembers);
+
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [leaveRequests, setLeaveRequests] = useState(initialLeaveRequests);
 
+  const userId = localStorage.getItem("user_id");
+
+  // ==========================
+  // LOAD TEAM MEMBERS
+  // ==========================
+
+  useEffect(() => {
+    loadTeamMembers();
+  }, []);
+
+  const loadTeamMembers = async () => {
+    try {
+
+      const response = await fetch(
+        `http://10.1.8.103:5000/api/employees/my-team/${userId}`
+      );
+
+      const data = await response.json();
+
+      const formattedMembers = data.map((emp: any) => ({
+        id: emp.id,
+
+        avatar: emp.name
+          ? emp.name
+              .split(" ")
+              .map((n: string) => n[0])
+              .join("")
+              .substring(0, 2)
+              .toUpperCase()
+          : "EM",
+
+        name: emp.name || "",
+
+        email: emp.email || "",
+
+        role:
+          emp.role ||
+          emp.designation ||
+          "Employee",
+
+        tasksCompleted:
+          emp.tasks_completed || 0,
+
+        efficiency:
+          emp.efficiency || 0,
+
+        hoursThisWeek:
+          emp.hours_this_week || 0,
+
+        status:
+          emp.status || "Active",
+      }));
+
+      setTeamMembers(formattedMembers);
+
+    } catch (error) {
+
+      console.error(
+        "Failed to load team members",
+        error
+      );
+
+    }
+  };
+
+  // ==========================
+  // TEAM STATS
+  // ==========================
+
   const activeCount = useMemo(
-    () => teamMembers.filter((member) => member.status === "Active").length,
+    () =>
+      teamMembers.filter(
+        (member) => member.status === "Active"
+      ).length,
     [teamMembers]
   );
 
   const leaveCount = useMemo(
-    () => teamMembers.filter((member) => member.status === "Leave").length,
+    () =>
+      teamMembers.filter(
+        (member) => member.status === "Leave"
+      ).length,
     [teamMembers]
   );
 
   const totalTasks = useMemo(
-    () => teamMembers.reduce((sum, member) => sum + member.tasksCompleted, 0),
+    () =>
+      teamMembers.reduce(
+        (sum, member) =>
+          sum + member.tasksCompleted,
+        0
+      ),
     [teamMembers]
   );
 
   const avgEfficiency = useMemo(
     () =>
-      Math.round(
-        teamMembers.reduce((sum, member) => sum + member.efficiency, 0) /
-          teamMembers.length
-      ),
+      teamMembers.length > 0
+        ? Math.round(
+            teamMembers.reduce(
+              (sum, member) =>
+                sum + member.efficiency,
+              0
+            ) / teamMembers.length
+          )
+        : 0,
     [teamMembers]
   );
 
-  const pendingLeaveCount = leaveRequests.filter(
-    (req) => req.status === "Pending"
-  ).length;
+  const pendingLeaveCount =
+    leaveRequests.filter(
+      (req) => req.status === "Pending"
+    ).length;
 
-  const filteredMembers = teamMembers.filter((member) => {
-    const matchesSearch =
-      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchQuery.toLowerCase());
+  // ==========================
+  // FILTER MEMBERS
+  // ==========================
 
-    const matchesFilter =
-      filterStatus === "All" || member.status === filterStatus;
+  const filteredMembers = teamMembers.filter(
+    (member) => {
 
-    return matchesSearch && matchesFilter;
-  });
+      const matchesSearch =
+        member.name
+          .toLowerCase()
+          .includes(
+            searchQuery.toLowerCase()
+          ) ||
 
-  const getStatusColor = (status) => {
+        member.role
+          .toLowerCase()
+          .includes(
+            searchQuery.toLowerCase()
+          ) ||
+
+        member.email
+          .toLowerCase()
+          .includes(
+            searchQuery.toLowerCase()
+          );
+
+      const matchesFilter =
+        filterStatus === "All" ||
+        member.status === filterStatus;
+
+      return (
+        matchesSearch &&
+        matchesFilter
+      );
+    }
+  );
+
+  // ==========================
+  // COLORS
+  // ==========================
+
+  const getStatusColor = (status: string) => {
+
     switch (status) {
+
       case "Active":
         return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100";
+
       case "Leave":
         return "bg-rose-50 text-rose-700 ring-1 ring-rose-100";
+
       case "Pending":
         return "bg-amber-50 text-amber-700 ring-1 ring-amber-100";
+
       case "Approved":
         return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100";
+
       case "Rejected":
         return "bg-slate-50 text-slate-700 ring-1 ring-slate-100";
+
       default:
         return "bg-slate-50 text-slate-700 ring-1 ring-slate-100";
     }
   };
 
-  const getEfficiencyColor = (efficiency) => {
-    if (efficiency >= 85) return "bg-emerald-400";
-    if (efficiency >= 70) return "bg-amber-400";
+  const getEfficiencyColor = (
+    efficiency: number
+  ) => {
+
+    if (efficiency >= 85)
+      return "bg-emerald-400";
+
+    if (efficiency >= 70)
+      return "bg-amber-400";
+
     return "bg-rose-400";
   };
 
-  const getNotificationStyles = (type) => {
+  const getNotificationStyles = (
+    type: string
+  ) => {
+
     switch (type) {
+
       case "alert":
         return "border-l-rose-300 bg-rose-50";
+
       case "success":
         return "border-l-emerald-300 bg-emerald-50";
+
       case "warning":
         return "border-l-amber-300 bg-amber-50";
+
       default:
         return "border-l-sky-300 bg-sky-50";
     }
   };
 
-  const handleLeaveAction = (requestId, action) => {
-    const request = leaveRequests.find((req) => req.id === requestId);
+  // ==========================
+  // LEAVE ACTION
+  // ==========================
+
+  const handleLeaveAction = (
+    requestId: number,
+    action: string
+  ) => {
+
+    const request =
+      leaveRequests.find(
+        (req) => req.id === requestId
+      );
+
     if (!request) return;
 
     setLeaveRequests((prev) =>
       prev.map((req) =>
         req.id === requestId
-          ? { ...req, status: action === "approve" ? "Approved" : "Rejected" }
+          ? {
+              ...req,
+              status:
+                action === "approve"
+                  ? "Approved"
+                  : "Rejected",
+            }
           : req
       )
     );
@@ -259,26 +418,55 @@ const ManagerDashboardPage = () => {
         member.name === request.employeeName
           ? {
               ...member,
-              status: action === "approve" ? "Leave" : "Active",
-              hoursThisWeek: action === "approve" ? 0 : member.hoursThisWeek,
+              status:
+                action === "approve"
+                  ? "Leave"
+                  : "Active",
+
+              hoursThisWeek:
+                action === "approve"
+                  ? 0
+                  : member.hoursThisWeek,
             }
           : member
       )
     );
   };
 
+  // ==========================
+  // TABS
+  // ==========================
+
   const tabs = [
-  { id: "overview", label: "Overview", icon: ChartBarIcon },
-  { id: "team", label: "Team", icon: UsersIcon },
-  {
-    id: "leave",
-    label: "Leave Requests",
-    icon: CalendarDaysIcon,
-    count: pendingLeaveCount,
-  },
-  { id: "performance", label: "Performance", icon: ChartBarIcon },
-  { id: "settings", label: "Settings", icon: Cog6ToothIcon },
-];
+    {
+      id: "overview",
+      label: "Overview",
+      icon: ChartBarIcon,
+    },
+    {
+      id: "team",
+      label: "Team",
+      icon: UsersIcon,
+    },
+    {
+      id: "leave",
+      label: "Leave Requests",
+      icon: CalendarDaysIcon,
+      count: pendingLeaveCount,
+    },
+    {
+      id: "performance",
+      label: "Performance",
+      icon: ChartBarIcon,
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      icon: Cog6ToothIcon,
+    },
+  ];
+
+  // YOUR RETURN STARTS BELOW
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-700">
@@ -545,67 +733,110 @@ const ManagerDashboardPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredMembers.map((member) => (
-                      <tr key={member.id} className="hover:bg-slate-50/60">
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
-                              {member.avatar}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-slate-700">
-                                {member.name}
-                              </p>
-                              <p className="text-[11px] text-slate-500">
-                                {member.email}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-slate-600">{member.role}</td>
-                        <td className="px-5 py-4 text-slate-600">
-                          {member.tasksCompleted}
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-1.5 w-24 rounded-full bg-slate-100">
-                              <div
-                                className={`h-1.5 rounded-full ${getEfficiencyColor(
-                                  member.efficiency
-                                )}`}
-                                style={{ width: `${member.efficiency}%` }}
-                              />
-                            </div>
-                            <span className="text-sm text-slate-600">
-                              {member.efficiency}%
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${getStatusColor(
-                              member.status
-                            )}`}
-                          >
-                            {member.status}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-1">
-                            <button className="rounded-md p-2 hover:bg-slate-100">
-                              <EyeIcon className="h-4 w-4 text-slate-500" />
-                            </button>
-                            <button className="rounded-md p-2 hover:bg-slate-100">
-                              <PencilIcon className="h-4 w-4 text-slate-500" />
-                            </button>
-                            <button className="rounded-md p-2 hover:bg-slate-100">
-                              <TrashIcon className="h-4 w-4 text-rose-400" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+  {filteredMembers.length > 0 ? (
+    filteredMembers.map((member: any) => (
+      <tr
+        key={member.id}
+        className="hover:bg-slate-50 transition"
+      >
+        {/* Employee */}
+        <td className="px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
+              {member.name?.charAt(0)?.toUpperCase() || "E"}
+            </div>
+
+            <div>
+              <p className="font-medium text-slate-700">
+                {member.name}
+              </p>
+
+              <p className="text-xs text-slate-500">
+                {member.email || "-"}
+              </p>
+            </div>
+          </div>
+        </td>
+
+        {/* Role */}
+        <td className="px-5 py-4 text-slate-600">
+          {member.role || member.designation || "-"}
+        </td>
+
+        {/* Tasks */}
+        <td className="px-5 py-4 text-slate-600">
+          {member.tasks_completed || 0}
+        </td>
+
+        {/* Efficiency */}
+        <td className="px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="h-1.5 w-24 rounded-full bg-slate-100">
+              <div
+                className="h-1.5 rounded-full bg-green-500"
+                style={{
+                  width: `${member.efficiency || 0}%`,
+                }}
+              />
+            </div>
+
+            <span className="text-sm text-slate-600">
+              {member.efficiency || 0}%
+            </span>
+          </div>
+        </td>
+
+        {/* Status */}
+        <td className="px-5 py-4">
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+              member.status === "Active"
+                ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-700"
+            }`}
+          >
+            {member.status || "Active"}
+          </span>
+        </td>
+
+        {/* Actions */}
+        <td className="px-5 py-4">
+          <div className="flex items-center gap-2">
+            <button
+              className="rounded-md p-2 hover:bg-slate-100"
+              title="View"
+            >
+              <EyeIcon className="h-4 w-4 text-slate-500" />
+            </button>
+
+            <button
+              className="rounded-md p-2 hover:bg-slate-100"
+              title="Edit"
+            >
+              <PencilIcon className="h-4 w-4 text-slate-500" />
+            </button>
+
+            <button
+              className="rounded-md p-2 hover:bg-slate-100"
+              title="Delete"
+            >
+              <TrashIcon className="h-4 w-4 text-red-500" />
+            </button>
+          </div>
+        </td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td
+        colSpan={6}
+        className="py-8 text-center text-slate-500"
+      >
+        No Team Members Found
+      </td>
+    </tr>
+  )}
+</tbody>
                 </table>
               </div>
             </div>

@@ -153,41 +153,69 @@ pg_university: "",
     });
   };
 
-  const handleSubmit = async () => {
-    try {
-      const employeeId = localStorage.getItem("employee_id");
-        const formPayload = new FormData();
+const handleSubmit = async () => {
+  try {
+    const employeeId = localStorage.getItem("employee_id");
 
-Object.keys(formData).forEach((key) => {
-  const value = formData[key as keyof typeof formData];
+    console.log("Employee ID:", employeeId);
+    console.log("Form Data:", formData);
 
-  if (value !== null && value !== undefined) {
-    formPayload.append(key, value as any);
-  }
-});
-
- 
-
-      const response = await fetch(
-  `http://10.1.8.103:5000/api/employees/${employeeId}`,
-  {
-    method: "PATCH",
-    body: formPayload,
-  }
-);
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success("Profile Completed Successfully");
-        navigate("/employee-dashboard");
-      } else {
-        toast.error(data.error || "Failed");
-      }
-    } catch (err) {
-      toast.error("Something went wrong");
+    if (!employeeId) {
+      toast.error("Employee ID not found");
+      return;
     }
-  };
+
+    const formPayload = new FormData();
+
+    Object.keys(formData).forEach((key) => {
+      const value = formData[key as keyof typeof formData];
+
+      if (
+        value !== null &&
+        value !== undefined &&
+        value !== ""
+      ) {
+        formPayload.append(key, value as any);
+      }
+    });
+
+    const response = await fetch(
+      `http://10.1.8.103:5000/api/employees/${employeeId}`,
+      {
+        method: "PATCH",
+        body: formPayload,
+      }
+    );
+
+    console.log("Response Status:", response.status);
+
+    const data = await response.json();
+
+    console.log("Response Data:", data);
+
+    if (response.ok) {
+      toast.success("Profile Completed Successfully");
+
+      setTimeout(() => {
+        navigate("/employee-dashboard");
+      }, 1000);
+
+    } else {
+      toast.error(
+        data.error ||
+        data.message ||
+        "Failed to update profile"
+      );
+    }
+
+  } catch (error) {
+    console.error("Submit Error:", error);
+
+    toast.error(
+      "Something went wrong while saving profile"
+    );
+  }
+};
   const [employeeInfo, setEmployeeInfo] = useState<any>(null);
   const employeeId = localStorage.getItem("employee_id");
 
@@ -1009,6 +1037,7 @@ if (data.skills) {
                   <span>All fields are required for profile completion</span>
                 </div>
                 <button
+                onClick={handleSubmit}
                   type="submit"
                   className="group relative inline-flex items-center gap-2 rounded-xl bg-[#46494C] px-8 py-3.5 font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl hover:shadow-[#46494C]/40 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#46494C] focus:ring-offset-2"
                 >

@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from models.user import User, Role, Team
-from middleware.auth import auth_required, role_required
+from middleware.auth import auth_required, access_level_required
 from models.database import db
 from datetime import datetime
 from models.employee import Employee
@@ -12,7 +12,7 @@ users_bp = Blueprint('users', __name__)
 # =========================================
 @users_bp.route('/', methods=['GET'])
 @auth_required
-@role_required('Admin', 'Super Admin')
+@access_level_required('admin')
 def get_users():
     try:
         page = request.args.get('page', 1, type=int)
@@ -65,7 +65,7 @@ def get_users():
 # =========================================
 @users_bp.route('/', methods=['POST'])
 @auth_required
-@role_required('Admin', 'Super Admin')
+@access_level_required('admin')
 def create_user():
     try:
         data = request.get_json()
@@ -168,7 +168,7 @@ def create_user():
 # =========================================
 @users_bp.route('/<int:user_id>', methods=['PUT'])
 @auth_required
-@role_required('Admin', 'Super Admin')
+@access_level_required('admin')
 def update_user(user_id):
     try:
         user = User.query.get(user_id)
@@ -242,7 +242,7 @@ def update_user(user_id):
 # =========================================
 @users_bp.route('/<int:user_id>', methods=['DELETE'])
 @auth_required
-@role_required('Admin', 'Super Admin')
+@access_level_required('admin')
 def delete_user(user_id):
     try:
         user = User.query.get(user_id)
@@ -312,3 +312,28 @@ def get_teams():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@users_bp.route('/roles/<int:team_id>', methods=['GET'])
+@auth_required
+def get_roles_by_team(team_id):
+
+    try:
+        roles = Role.query.filter_by(
+            team_id=team_id
+        ).all()
+
+        return jsonify({
+            "roles": [
+                {
+                    "id": role.id,
+                    "name": role.name
+                }
+                for role in roles
+            ]
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": str(e)
+        }), 500
+    

@@ -362,12 +362,12 @@ const UsersPage: React.FC = () => {
 
                           <td className="px-5 py-4">
                             <span className="inline-flex rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-700">
-                              {user.role}
+                              {user.role_name}
                             </span>
                           </td>
 
                           <td className="px-5 py-4 text-sm text-slate-600">
-                            {user.team || '—'}
+                            {user.team_name|| '—'}
                           </td>
 
                           <td className="px-5 py-4">

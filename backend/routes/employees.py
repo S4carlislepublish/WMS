@@ -3,6 +3,11 @@ from models.database import db
 from models.employee import Employee
 from datetime import datetime
 import traceback
+import base64
+from models.user import User
+from middleware.auth import auth_required
+from datetime import date, timedelta
+from models.attendance import Attendance
 
 employees_bp = Blueprint("employees", __name__)
 
@@ -597,3 +602,188 @@ def test():
     return jsonify({"message":"working"})
 
 print("Employees Blueprint Loaded")
+
+
+@employees_bp.route("/birthdays/today", methods=["GET"])
+def today_birthdays():
+
+    today = date.today()
+
+    employees = Employee.query.filter(
+        db.extract("month", Employee.dob) == today.month,
+        db.extract("day", Employee.dob) == today.day
+    ).all()
+
+    return jsonify([
+        {
+    "id": e.id,
+    "first_name": e.first_name,
+    "last_name": e.last_name,
+    "user_id": e.user_id,
+    "department": e.department,
+    "designation": e.designation
+}
+        for e in employees
+    ])
+
+@employees_bp.route("/team-overview", methods=["GET"])
+@auth_required
+def get_team_overview():
+
+    teams = Team.query.all()
+
+    result = []
+
+    for team in teams:
+
+        employees = Employee.query.filter_by(
+            team_id=team.id
+        ).all()
+
+        result.append({
+            "team_id": team.id,
+            "team_name": team.name,
+            "member_count": len(employees),
+            "total_salary": sum(
+                float(emp.salary or 0)
+                for emp in employees
+            ),
+            "employees": [
+                {
+                    "id": emp.id,
+                    "name": f"{emp.first_name} {emp.last_name}",
+                    "role": (
+                        emp.user.role.name
+                        if emp.user and emp.user.role
+                        else ""
+                    ),
+                    "reporting_manager": emp.reporting_manager,
+                    "salary": emp.salary
+                }
+                for emp in employees
+            ]
+        })
+
+    return jsonify(result), 200
+
+
+@employees_bp.route("/my-team/<int:user_id>", methods=["GET"])
+def get_my_team(user_id):
+
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify([])
+
+    team_id = user.team_id
+
+    team_users = User.query.filter_by(
+        team_id=team_id
+    ).all()
+
+    result = []
+
+    for team_user in team_users:
+
+        employee = Employee.query.filter_by(
+            user_id=team_user.id
+        ).first()
+
+        if employee:
+
+            result.append({
+                "id": employee.id,
+                "name": f"{employee.first_name} {employee.last_name}",
+                "email": employee.email,
+                "role": employee.role,
+                "department": employee.department,
+                "designation": employee.designation,
+                "salary": employee.salary,
+                "reporting_manager": employee.reporting_manager,
+                "status": employee.status
+            })
+
+    return jsonify(result)
+
+@employees_bp.route(
+    "/reporting-employees/<int:user_id>",
+    methods=["GET"]
+)
+def get_reporting_employees(user_id):
+
+    try:
+
+        manager = Employee.query.filter_by(
+            user_id=user_id
+        ).first()
+
+        if not manager:
+            return jsonify([])
+
+        manager_name = (
+            f"{manager.first_name} {manager.last_name}"
+        ).strip().lower()
+
+        employees = Employee.query.all()
+
+        yesterday = date.today() - timedelta(days=1)
+
+        result = []
+
+        for employee in employees:
+
+            if not employee.reporting_manager:
+                continue
+
+            if employee.reporting_manager.strip().lower() != manager_name:
+                continue
+
+            attendance = Attendance.query.filter_by(
+                user_id=employee.user_id,
+                attendance_date=yesterday
+            ).first()
+
+            result.append({
+            "employee_id": employee.id,
+
+            "employee_name":
+            f"{employee.first_name} {employee.last_name}",
+
+            "designation":
+                employee.designation,
+
+            "profile_image":
+                base64.b64encode(
+            employee.profile_image
+        ).decode("utf-8")
+        if employee.profile_image
+        else None,
+
+    "status":
+        attendance.status
+        if attendance
+        else "Absent",
+
+    "check_in":
+        attendance.check_in.strftime("%I:%M %p")
+        if attendance and attendance.check_in
+        else "-",
+
+    "check_out":
+        attendance.check_out.strftime("%I:%M %p")
+        if attendance and attendance.check_out
+        else "-",
+
+    "working_hours":
+        attendance.total_hours
+        if attendance
+        else 0
+})
+
+        return jsonify(result)
+
+    except Exception as e:
+
+        return jsonify({
+            "error": str(e)
+        }), 500

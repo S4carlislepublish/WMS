@@ -5,6 +5,7 @@ from flask_jwt_extended import (
     jwt_required,
     get_jwt_identity
 )
+from sqlalchemy import or_
 
 from models.employee import Employee
 from models.user import User
@@ -31,19 +32,32 @@ def login():
                 "error": "Request body is missing"
             }), 400
 
-        email = data.get("email")
+        login_id = data.get("email")
         password = data.get("password")
 
-        if not email or not password:
-            return jsonify({
-                "success": False,
-                "error": "Email and Password are required"
-            }), 400
+        if not login_id or not password:
+          return jsonify({
+        "success": False,
+        "error": "Username and Password are required"
+    }), 400
 
         # Find user
-        user = User.query.filter_by(
-            company_email=email
-        ).first()
+        
+
+        user = User.query.filter(
+        or_(
+        User.company_email == login_id,
+        User.email == login_id,
+        User.full_name.ilike(f"{login_id}%")
+    )
+).first()
+
+        print("USER FOUND:", user)
+
+        if user:
+           print("DB EMAIL:", user.company_email)
+           print("HASH:", user.password_hash)
+           print("PASSWORD MATCH:", user.check_password(password))
 
         if not user:
             return jsonify({

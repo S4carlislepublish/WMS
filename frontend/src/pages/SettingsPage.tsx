@@ -313,7 +313,7 @@ const SettingsPage: React.FC = () => {
 
             <SectionCard
               title="Layout density"
-              subtitle="Choose how compact the interface should feel."
+              subtitle="Choose how compact the interface  uld feel."
             >
               <div className="grid gap-3">
                 {['Comfortable', 'Balanced', 'Compact'].map((item, index) => (

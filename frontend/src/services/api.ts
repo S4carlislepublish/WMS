@@ -135,6 +135,9 @@ class ApiService {
   async getRoles() {
     return this.api.get('/users/roles');
   }
+  async getRolesByTeam(teamId: number) {
+  return this.api.get(`/users/roles/${teamId}`);
+}
 
   async getTeams() {
     return this.api.get('/users/teams');
@@ -277,6 +280,8 @@ async getWorkflows() {
 
 export const apiService = new ApiService();
 
+
+
 // ================= AUTH SERVICE =================
 
 export const authService = {
@@ -292,7 +297,12 @@ export const userService = {
   createUser: (data: any) => apiService.createUser(data),
   updateUser: (id: number, data: any) => apiService.updateUser(id, data),
   deleteUser: (id: number) => apiService.deleteUser(id),
+
   getRoles: () => apiService.getRoles(),
+
+  getRolesByTeam: (teamId: number) =>
+    apiService.getRolesByTeam(teamId),
+
   getTeams: () => apiService.getTeams(),
 };
 
