@@ -25,82 +25,104 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {e.preventDefault();
+setLoading(true);
 
-  try {
-    const response = await login(
-  formData.email,
-  formData.password
-);
+try {
 
-if (
-  response.is_first_login ||
-  !response.profile_completed
-) {
-  navigate("/complete-profile");
-  return;
-}
+  const response = await login(
+    formData.email,
+    formData.password
+  );
 
-    console.log("Login Response:", response);
+  sessionStorage.removeItem(
+    "attendance_popup_shown"
+  );
 
-    const role =
-      response.role ||
-      response.user?.role_name ||
-      "";
+  sessionStorage.removeItem(
+    "birthday_popup_shown"
+  );
 
-    const employeeRoles = [
-      "Pre-Editing",
-      "Copywriting",
-      "QA"
-    ];
+  console.log(
+    "Login Response:",
+    response
+  );
 
-    const isEmployee =
-      employeeRoles.includes(role);
+  const accessLevel =
+    response.access_level ||
+    response.user?.access_level ||
+    "";
 
-    if (
-      isEmployee &&
-      (
-        response.profile_completed === false ||
-        response.is_first_login === true
-      )
-    ) {
-      navigate("/complete-profile");
-    }
-    else if (isEmployee) {
-      navigate("/employee-dashboard");
-    }
-    else if (role === "HR") {
-      navigate("/hr-dashboard");
-    }
-    else if (
-      role === "Admin" ||
-      role === "Super Admin"
-    ) {
-      navigate("/admin-dashboard");
-    }
-    else if (role === "Manager") {
-      navigate("/manager-dashboard");
-    }
-    else {
-      navigate("/dashboard");
-    }
-    console.log("Login Response:", response);
-console.log("Role:", response.role);
-console.log("User:", response.user);
+  console.log(
+    "Access Level:",
+    accessLevel
+  );
 
-  } catch (error: any) {
-    console.error(error);
+  if (
+    accessLevel === "user" &&
+    (
+      response.is_first_login ||
+      !response.profile_completed
+    )
+  ) {
 
-    toast.error(
-      error.response?.data?.error ||
-      "Login failed"
-    );
-  } finally {
-    setLoading(false);
+    navigate("/complete-profile");
+    return;
+
   }
-};
+
+  if (
+    accessLevel === "user"
+  ) {
+
+    navigate(
+      "/employee-dashboard"
+    );
+
+  }
+  else if (
+    accessLevel === "manager"
+  ) {
+
+    navigate(
+      "/manager-dashboard"
+    );
+
+  }
+  else if (
+    accessLevel === "admin" ||
+    accessLevel === "hr"
+  ) {
+
+    navigate(
+      "/dashboard"
+    );
+
+  }
+  else {
+
+    navigate(
+      "/dashboard"
+    );
+
+  }
+
+} catch (error: any) {
+
+  console.error(error);
+
+  toast.error(
+    error.response?.data?.error ||
+    "Login failed"
+  );
+
+} finally {
+
+  setLoading(false);
+
+}};
+
+// You have TWO separate popup states!
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f5f5f5] overflow-hidden">
@@ -124,7 +146,7 @@ console.log("User:", response.user);
     <span className="text-[#2B609E]">S</span>
       <span className="text-[#FF0000]">4</span>
       <span className="text-[#2B609E]">C</span>
-      <span className="text-[#F5975B]">Ops</span>
+      <span className="text-[#F5975B] ml-[20px]">IPH</span>
   </h1>
 </div>
         
@@ -161,7 +183,7 @@ console.log("User:", response.user);
 
                 <h2 className="font-serif font-semibold text-white leading-[0.95] text-[52px] sm:text-[70px] lg:text-[72px] xl:text-[78px]">
                   Intelligent
-                  <span className="block text-[#efc15b]">Pre-Production Hub</span>
+                  <span className="block text-[#efc15b]">Production Hub</span>
                 </h2>
 
                 <p className="mt-7 max-w-[620px] text-[20px] leading-[1.5] text-white">
@@ -183,10 +205,10 @@ console.log("User:", response.user);
             >
               <div className="mb-10">
                 <h3 className="text-[24px] sm:text-[26px] font-bold font-serif text-[#22345a]">
-                  Welcome to S4COps
+                  Welcome to S4C IPH
                 </h3>
                 <p className="mt-2 text-[15px] text-[#8a93a3]">
-                  Sign in to your S4COps workspace
+                  Sign in to your S4C IPH workspace
                 </p>
               </div>
 

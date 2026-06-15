@@ -3,7 +3,6 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-import {socket} from "../services/socket";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -32,6 +31,8 @@ import {
 
 import logo from "../images/s.png";
 
+import { socket } from "../services/socket";
+
 import Lottie from "lottie-react";
 import aiAnimation from "../assests/astronot.json";
 
@@ -55,6 +56,92 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({
   const [showCommunication, setShowCommunication] =
   useState(false);
 
+const [notifications, setNotifications] = useState<any[]>([]);
+
+const [showNotifications, setShowNotifications] = useState(false);
+
+const shownNotifications = useRef(
+  new Set<number>()
+);
+
+useEffect(() => {
+
+  notifications.forEach((item: any) => {
+
+    if (
+      !shownNotifications.current.has(
+        item.id
+      )
+    ) {
+
+      shownNotifications.current.add(
+        item.id
+      );
+
+      toast.error(
+        item.message,
+        {
+          duration: 10000
+        }
+      );
+    }
+
+  });
+
+}, [notifications]);
+
+const employee = JSON.parse(
+  localStorage.getItem("employee") || "{}"
+);
+
+const managerName =
+  `${employee.first_name} ${employee.last_name}`;
+
+useEffect(() => {
+
+  const managerName =
+    user?.full_name;
+
+  if (!managerName) return;
+
+  const fetchNotifications =
+    async () => {
+
+      try {
+
+        const res =
+          await fetch(
+            `http://10.1.8.103:5000/api/notifications/${managerName}`
+          );
+
+        const data =
+          await res.json();
+
+        setNotifications(data);
+
+      } catch (err) {
+
+        console.error(err);
+
+      }
+    };
+
+  fetchNotifications();
+
+  const interval =
+    setInterval(
+      fetchNotifications,
+      5000
+    );
+
+  return () =>
+    clearInterval(interval);
+
+}, [user]);
+
+
+
+
   const [activeTab, setActiveTab] = useState<
   "office" | "employee"
 >("employee");
@@ -65,6 +152,17 @@ const canSendOfficeMessage =
   user?.role === "HR" ||
   user?.role === "Admin" ||
   user?.role === "Super Admin";
+
+  const [birthdayModal, setBirthdayModal] = useState(false);
+
+  const [
+  attendanceSummaryModal,
+  setAttendanceSummaryModal
+] = useState(false);
+
+const [birthdayEmployees, setBirthdayEmployees] =
+  useState<any[]>([]);
+  
 
 
 
@@ -89,6 +187,59 @@ const [mentionResults, setMentionResults] =
   useState<any[]>([]);
 
 
+  const fetchTodayBirthdays = async () => {
+  try {
+    const res = await fetch(
+      "http://10.1.8.103:5000/api/employees/birthdays/today"
+    );
+
+    const data = await res.json();
+
+    setBirthdayEmployees(
+      Array.isArray(data) ? data : []
+    );
+
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+useEffect(() => {
+  fetchTodayBirthdays();
+}, []);
+
+useEffect(() => {
+
+  if (
+    birthdayEmployees.length > 0 &&
+    !sessionStorage.getItem(
+      "birthday_popup_shown"
+    )
+  ) {
+
+    setBirthdayModal(true);
+
+    sessionStorage.setItem(
+      "birthday_popup_shown",
+      "true"
+    );
+
+    setTimeout(() => {
+
+      setBirthdayModal(false);
+
+      setAttendanceSummaryModal(true);
+
+    }, 2000);
+
+  } else {
+
+    setAttendanceSummaryModal(true);
+
+  }
+
+}, [birthdayEmployees]);
+
   
   // Real conversational state starts here
 const [
@@ -110,10 +261,23 @@ const [
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
-    await logout();
-    toast.success("Logged out successfully");
-    navigate("/login");
-  };
+
+  await logout();
+
+  sessionStorage.clear();
+
+  localStorage.clear();
+
+  toast.success("Logged out successfully");
+
+  navigate("/login");
+};
+
+const [selectedEmployee, setSelectedEmployee] =
+  useState<any>(null);
+
+const [showAttendanceModal, setShowAttendanceModal] =
+  useState(false);
 
 
   useEffect(() => {
@@ -212,7 +376,7 @@ const [
   };
 
   const [showPopup, setShowPopup] =
-  useState(true);
+  useState(false);
 
 const [reportingEmployees, setReportingEmployees] =
   useState([]);
@@ -231,6 +395,8 @@ const [reportingEmployees, setReportingEmployees] =
 
     const data =
       await response.json();
+      console.log("User ID:", userId);
+      console.log("Reporting Employees:", data);
 
     setReportingEmployees(data);
 
@@ -977,21 +1143,516 @@ const [lastMessageCount, setLastMessageCount] =
 
 }, [employeeMessages]);
 
+const isMyBirthday =
+  birthdayEmployees.some(
+    (emp: any) =>
+      Number(emp.user_id) ===
+      Number(user?.id)
+  );
+
+  const sendBirthdayWish = async (emp: any) => {
+
+  const senderName =
+    localStorage.getItem("full_name");
+
+  await fetch(
+    "http://10.1.8.103:5000/api/communications",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+
+        employee_id: emp.id,
+
+        employee_name:
+          `${emp.first_name} ${emp.last_name}`,
+
+        receiver_id: emp.user_id,
+
+        message_type: "employee",
+
+        created_by: senderName,
+
+        message:
+          `🎂 Happy Birthday ${emp.first_name}! Wishing you happiness, success and prosperity. 🎉`
+      })
+    }
+    
+  );
+};
+
+const currentEmployee = employees.find(
+  (emp: any) =>
+    Number(emp.user_id) === Number(user?.id)
+);
+
+
+
+
+const [attendanceModal, setAttendanceModal] = useState(false); // ← never used properly
+
+const userId = localStorage.getItem("user_id");
+
+const popupKey =
+  `attendance_popup_${userId}`;
+
+useEffect(() => {
+
+  if (
+    reportingEmployees.length > 0 &&
+    !sessionStorage.getItem(popupKey)
+  ) {
+
+    setShowPopup(true);
+
+    sessionStorage.setItem(
+      popupKey,
+      "true"
+    );
+
+  }
+
+}, [reportingEmployees]);
+
+
+
 
 
 
 
   return (
     <div className="min-h-screen bg-gray-900">
-      {showPopup &&
-reportingEmployees.length > 0 && (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-2xl shadow-2xl w-[800px] max-w-full overflow-hidden">
-      
+
+      {
+showAttendanceModal &&
+selectedEmployee && (
+
+<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[9999]">
+
+  <div className="bg-white rounded-2xl w-[650px] shadow-xl">
+
+    <div className="bg-gray-800 text-white p-5 flex justify-between items-center rounded-t-2xl">
+
+      <h2 className="text-xl font-semibold">
+        Attendance Details
+      </h2>
+
+      <button
+        onClick={() =>
+          setShowAttendanceModal(false)
+        }
+      >
+        ✕
+      </button>
+
+    </div>
+
+    <div className="p-6 space-y-4">
+
+      <div>
+        <h3 className="font-semibold text-lg">
+          {selectedEmployee.employee_name}
+        </h3>
+
+        <p className="text-gray-500">
+          {selectedEmployee.designation}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+
+        <div>
+          <label className="text-gray-500">
+            Check In
+          </label>
+
+          <p>
+            {selectedEmployee.check_in}
+          </p>
+        </div>
+
+        <div>
+          <label className="text-gray-500">
+            Check Out
+          </label>
+
+          <p>
+            {selectedEmployee.check_out}
+          </p>
+        </div>
+
+        <div>
+          <label className="text-gray-500">
+            Lunch Break
+          </label>
+
+          <p>
+            {selectedEmployee.lunch_minutes} min
+          </p>
+        </div>
+
+        <div>
+          <label className="text-gray-500">
+            Tea Break
+          </label>
+
+          <p>
+            {selectedEmployee.tea_minutes} min
+          </p>
+        </div>
+
+        <div>
+          <label className="text-gray-500">
+            Total Break
+          </label>
+
+          <p>
+            {selectedEmployee.total_break_minutes} min
+          </p>
+        </div>
+
+        <div>
+          <label className="text-gray-500">
+            Working Hours
+          </label>
+
+          <p>
+            {selectedEmployee.total_hours}
+          </p>
+        </div>
+
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4">
+
+        <button
+          className="bg-green-600 text-white px-5 py-2 rounded-lg"
+          onClick={() =>
+            approveAttendance(
+              selectedEmployee.employee_id
+            )
+          }
+        >
+          Approve
+        </button>
+
+        <button
+          className="bg-red-600 text-white px-5 py-2 rounded-lg"
+          onClick={() =>
+            rejectAttendance(
+              selectedEmployee.employee_id
+            )
+          }
+        >
+          Reject
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+)}
+
+      <div className="fixed top-5 right-5 z-[9998]">
+  {/* Notification Button */}
+  <button
+    onClick={() => setShowNotifications(!showNotifications)}
+    className="
+      relative
+      bg-white
+      rounded-full
+      p-3
+      shadow-xl
+      border
+      border-gray-200
+      hover:shadow-2xl
+      hover:scale-105
+      transition-all
+      duration-200
+      focus:outline-none
+      focus:ring-2
+      focus:ring-blue-400
+    "
+    aria-label="Notifications"
+  >
+    <span className="text-xl">🔔</span>
+
+    {notifications.length > 0 && (
+      <span
+        className="
+          absolute
+          -top-1
+          -right-1
+          bg-red-500
+          text-white
+          text-xs
+          w-5
+          h-5
+          rounded-full
+          flex
+          items-center
+          justify-center
+          font-semibold
+          shadow
+        "
+      >
+        {notifications.length}
+      </span>
+    )}
+  </button>
+
+  {/* Notifications Panel */}
+  {showNotifications && (
+    <div
+      className="
+        absolute
+        top-14
+        right-0
+        mt-2
+        w-[380px]
+        bg-white
+        rounded-2xl
+        shadow-2xl
+        border
+        border-gray-200
+        max-h-[480px]
+        overflow-y-auto
+        animate-[fadeInSlide_0.2s_ease-out]
+      "
+      role="dialog"
+      aria-label="Notifications Panel"
+    >
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 flex justify-between items-center">
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 className="font-semibold text-gray-800">Notifications</h3>
+        {notifications.length > 0 && (
+          <button
+            onClick={() => setNotifications([])}
+            className="
+              text-sm
+              text-gray-600
+              hover:text-red-600
+              hover:font-medium
+              transition-colors
+            "
+          >
+            Clear all
+          </button>
+        )}
+      </div>
+
+      {/* Content */}
+      {notifications.length === 0 ? (
+        <div className="p-8 text-center text-gray-500">
+          <div className="text-4xl mb-2">📭</div>
+          <p className="font-medium">No Notifications</p>
+          <p className="text-sm mt-1">You're all clear for now.</p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-gray-100">
+          {notifications.map((item: any) => (
+            <li
+              key={item.id}
+              className="
+                p-4
+                hover:bg-gray-50
+                transition-colors
+                flex
+                gap-3
+                items-start
+                rounded-lg
+                mx-3
+                my-2
+                border
+                border-gray-200
+              "
+            >
+              {/* Icon based on type (optional: default to info) */}
+              <span className="text-lg">
+                {item.type === "success" && "🟢"}
+                {item.type === "warning" && "🟡"}
+                {item.type === "error" && "🔴"}
+                {(item.type === "info" || !item.type) && "🔵"}
+              </span>
+
+              {/* Content */}
+              <div className="flex-1">
+                <h4 className="font-semibold text-gray-800">
+                  {item.title}
+                </h4>
+                <p className="text-sm text-gray-700 mt-0.5">
+                  {item.message}
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  {item.timestamp
+                    ? new Date(item.timestamp).toLocaleString()
+                    : "Just now"}
+                </p>
+              </div>
+
+              {/* Dismiss button */}
+              <button
+                onClick={() =>
+                  setNotifications((prev: any[]) =>
+                    prev.filter((n: any) => n.id !== item.id)
+                  )
+                }
+                className="
+                  text-gray-400
+                  hover:text-gray-600
+                  hover:font-medium
+                  transition-colors
+                  p-1
+                  rounded
+                  focus:outline-none
+                  focus:ring-2
+                  focus:ring-gray-300
+                "
+                aria-label="Dismiss notification"
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )}
+
+  {/* Inline keyframes for animation */}
+  <style>
+    {`
+      @keyframes fadeInSlide {
+        from {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    `}
+  </style>
+</div>
+
+      {birthdayModal && birthdayEmployees.length > 0 && (
+  <div className="fixed top-5 right-5 z-[9999] w-[380px]">
+    {isMyBirthday ? (
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-800 to-gray-600 px-5 py-4 flex justify-between items-center">
+          <h2 className="text-white font-semibold text-base">
+            🎂 Happy Birthday
+          </h2>
+
+          <button
+            onClick={() => setBirthdayModal(false)}
+            className="text-white text-xl leading-none hover:opacity-80 transition-opacity"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="p-5 text-center">
+          <img
+            src={`http://10.1.8.103:5000/api/employees/image/${currentEmployee?.id}`}
+            alt="Birthday"
+            className="w-24 h-24 rounded-full object-cover border-4 border-gray-200 mx-auto shadow-md"
+            onError={(e) => {
+              e.currentTarget.src =
+                "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+            }}
+          />
+
+          <h3 className="mt-4 text-lg font-semibold text-gray-800">
+            {user?.full_name}
+          </h3>
+
+          <p className="mt-2 text-sm text-gray-600 leading-6">
+            Wishing you happiness, success, and prosperity.
+          </p>
+
+          <div className="mt-4 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700">
+            🎉 Have a wonderful year ahead!
+          </div>
+        </div>
+      </div>
+    ) : (
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-800 to-gray-600 px-5 py-4 flex justify-between items-center">
+          <h2 className="text-white font-semibold text-base">
+            🎉 Today's Birthdays
+          </h2>
+
+          <button
+            onClick={() => setBirthdayModal(false)}
+            className="text-white text-xl leading-none hover:opacity-80 transition-opacity"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="max-h-[350px] overflow-y-auto p-4 space-y-3">
+          {birthdayEmployees.map((emp: any) => (
+            <div
+              key={emp.id}
+              className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-colors"
+            >
+              <img
+                src={`http://10.1.8.103:5000/api/employees/image/${emp.id}`}
+                alt={emp.first_name}
+                className="w-14 h-14 rounded-full object-cover border border-gray-300 shadow-sm"
+                onError={(e) => {
+                  e.currentTarget.src =
+                    "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                }}
+              />
+
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-gray-800 truncate">
+                  {emp.first_name} {emp.last_name}
+                </h3>
+
+                <p className="text-xs text-gray-500 truncate">
+                  {emp.designation}
+                </p>
+
+                <p className="text-xs text-gray-700 font-medium mt-0.5">
+                  🎂 Birthday Today
+                </p>
+              </div>
+
+              <button
+                onClick={() => sendBirthdayWish(emp)}
+                className="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
+              >
+                Wishes
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="text-center text-xs text-gray-500 py-3 border-t border-gray-200 bg-gray-50">
+          — S4 Carlisle Publishing Services
+        </div>
+      </div>
+    )}
+  </div>
+)}
+      {showPopup && reportingEmployees.length > 0 && (
+  <div className="fixed inset-0 bg-black/35 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-[800px] max-w-full overflow-hidden border border-gray-200">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-gray-800 to-gray-600 p-6 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <div className="bg-white/20 p-2 rounded-lg">
+          <div className="bg-white/10 p-2 rounded-lg">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
               <rect x="3" y="4" width="18" height="16" rx="2" />
               <line x1="16" y1="2" x2="16" y2="6" />
@@ -999,14 +1660,14 @@ reportingEmployees.length > 0 && (
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-white">
+          <h2 className="text-xl font-semibold text-white">
             Yesterday Attendance Summary
           </h2>
         </div>
-        
+
         <button
           onClick={() => setShowPopup(false)}
-          className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
+          className="bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-colors"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
             <line x1="18" y1="6" x2="6" y2="18" />
@@ -1016,92 +1677,91 @@ reportingEmployees.length > 0 && (
       </div>
 
       {/* Table */}
-      <div className="p-6">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b-2 border-gray-100">
-              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
-                Name
-              </th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
-                Status
-              </th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
-                Check In
-              </th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
-                Check Out
-              </th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
-                Hours
-              </th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
-                Action
-              </th>
-            </tr>
-          </thead>
+      <div className="p-6 bg-gray-50">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+          <table className="w-full">
+            <thead className="bg-gray-100">
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
+                  Name
+                </th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
+                  Status
+                </th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
+                  Check In
+                </th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
+                  Check Out
+                </th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
+                  Hours
+                </th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
+                  Action
+                </th>
+              </tr>
+            </thead>
 
-          <tbody>
-            {reportingEmployees.map(
-              (emp: any, idx: number) => (
+            <tbody>
+              {reportingEmployees.map((emp: any, idx: number) => (
                 <tr
                   key={emp.employee_id}
                   className={`
-                    border-b border-gray-50 hover:bg-gray-50 transition-colors
-                    ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-25'}
+                    border-b border-gray-100
+                    hover:bg-gray-50 transition-colors
+                    ${idx % 2 === 0 ? "bg-white" : "bg-gray-50/40"}
                   `}
                 >
                   <td className="py-3 px-4">
-  <div className="flex items-center gap-3">
-    
-    <img
-      src={
-        emp.profile_image
-          ? `data:image/jpeg;base64,${emp.profile_image}`
-          : "/default-avatar.png"
-      }
-      alt={emp.employee_name}
-      className="w-10 h-10 rounded-full object-cover border"
-    />
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={
+                          emp.profile_image
+                            ? `data:image/jpeg;base64,${emp.profile_image}`
+                            : "/default-avatar.png"
+                        }
+                        alt={emp.employee_name}
+                        className="w-10 h-10 rounded-full object-cover border border-gray-300 bg-gray-100"
+                      />
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {emp.employee_name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {emp.designation}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
 
-    <div>
-      <p className="font-medium text-gray-900">
-        {emp.employee_name}
-      </p>
-      <p className="text-xs text-gray-500">
-        {emp.designation}
-      </p>
-    </div>
-
-  </div>
-</td>
                   <td className="py-3 px-4">
                     <span
                       className={`
-                        inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
+                        inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border
                         ${
-                          emp.status === 'Present'
-                            ? 'bg-green-100 text-green-700'
-                            : emp.status === 'Absent'
-                            ? 'bg-red-100 text-red-700'
-                            : emp.status === 'Late'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-gray-100 text-gray-700'
+                          emp.status === "Present"
+                            ? "bg-gray-100 text-gray-800 border-gray-300"
+                            : emp.status === "Absent"
+                            ? "bg-gray-200 text-gray-700 border-gray-300"
+                            : emp.status === "Late"
+                            ? "bg-gray-100 text-gray-700 border-gray-300"
+                            : "bg-gray-100 text-gray-600 border-gray-300"
                         }
                       `}
                     >
-                      {emp.status === 'Present' && (
+                      {emp.status === "Present" && (
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="mr-1">
                           <polyline points="20,6 9,17 4,12" />
                         </svg>
                       )}
-                      {emp.status === 'Absent' && (
+                      {emp.status === "Absent" && (
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="mr-1">
                           <line x1="18" y1="6" x2="6" y2="18" />
                           <line x1="6" y1="6" x2="18" y2="18" />
                         </svg>
                       )}
-                      {emp.status === 'Late' && (
+                      {emp.status === "Late" && (
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mr-1">
                           <circle cx="12" cy="12" r="10" />
                           <polyline points="12,6 12,12 16,14" />
@@ -1110,73 +1770,89 @@ reportingEmployees.length > 0 && (
                       {emp.status}
                     </span>
                   </td>
+
                   <td className="py-3 px-4 text-gray-600">
                     <div className="flex items-center gap-2">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500">
                         <circle cx="12" cy="12" r="10" />
                         <polyline points="12,6 12,12 16,14" />
                       </svg>
                       {emp.check_in}
                     </div>
                   </td>
+
                   <td className="py-3 px-4 text-gray-600">
                     <div className="flex items-center gap-2">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-500">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500">
                         <circle cx="12" cy="12" r="10" />
                         <polyline points="12,6 12,12 16,14" />
                       </svg>
                       {emp.check_out}
                     </div>
                   </td>
+
                   <td className="py-3 px-4">
                     <span className="font-semibold text-gray-900">
                       {emp.working_hours}
                     </span>
                   </td>
+
                   <td className="py-3 px-4">
-  <button
-    className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600"
-    onClick={() => viewAttendance(emp)}
-  >
-    View
-  </button>
-</td>
+                    <button
+                      className="px-3 py-1.5 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-900 transition-colors"
+                      onClick={() => {
+  setSelectedEmployee(emp);
+  setShowAttendanceModal(true);
+}}
+                    >
+                      View
+                    </button>
+                  </td>
                 </tr>
-              )
-            )}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {/* Footer Stats */}
-        <div className="mt-6 flex gap-4">
-          <div className="bg-green-50 px-4 py-3 rounded-lg flex items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2">
+        <div className="mt-6 flex flex-wrap gap-3">
+          <div className="bg-gray-100 px-4 py-3 rounded-lg flex items-center gap-2 border border-gray-200">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2">
               <polyline points="20,6 9,17 4,12" />
             </svg>
-            <span className="text-sm font-semibold text-green-700">
-              {reportingEmployees.filter(e => e.status === 'Present').length} Present
+            <span className="text-sm font-medium text-gray-700">
+              {reportingEmployees.filter(e => e.status === "Present").length} Present
             </span>
           </div>
-          <div className="bg-red-50 px-4 py-3 rounded-lg flex items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2">
+
+          <div className="bg-gray-100 px-4 py-3 rounded-lg flex items-center gap-2 border border-gray-200">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
-            <span className="text-sm font-semibold text-red-700">
-              {reportingEmployees.filter(e => e.status === 'Absent').length} Absent
+            <span className="text-sm font-medium text-gray-700">
+              {reportingEmployees.filter(e => e.status === "Absent").length} Absent
             </span>
           </div>
-          <div className="bg-blue-50 px-4 py-3 rounded-lg flex items-center gap-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4362EE" strokeWidth="2">
+
+          <div className="bg-gray-100 px-4 py-3 rounded-lg flex items-center gap-2 border border-gray-200">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2">
               <rect x="3" y="4" width="18" height="16" rx="2" />
               <line x1="16" y1="2" x2="16" y2="6" />
               <line x1="8" y1="2" x2="8" y2="6" />
             </svg>
-            <span className="text-sm font-semibold text-blue-700">
+            <span className="text-sm font-medium text-gray-700">
               Total: {reportingEmployees.length} Employees
             </span>
           </div>
+                   <button
+    // onClick={approveAllAttendance}
+    className="bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-lg font-medium shadow-md transition-all ml-[140px]"
+  >
+    ✓ Approve All
+  </button>
         </div>
+ 
       </div>
     </div>
   </div>
@@ -1373,320 +2049,220 @@ reportingEmployees.length > 0 && (
 </button>
 
 {showCommunication && (
-  <div
-    className="
-      fixed
-      bottom-6
-      right-6
-      w-[480px]
-      h-[650px]
-      bg-gradient-to-br
-      from-gray-50
-      to-white
-      rounded-3xl
-      shadow-2xl
-      z-50
-      overflow-hidden
-      flex
-      flex-col
-      border
-      border-gray-200
-    "
-  >
-    {/* Header */}
-    <div className="flex border-b">
+  <div className="fixed bottom-6 right-6 w-[460px] h-[640px] bg-white rounded-[20px] shadow-2xl z-50 flex flex-col overflow-hidden border border-gray-200">
 
-  <button
-    onClick={() =>
-      setActiveTab("office")
-    }
-    className={`flex-1 p-3 font-semibold ${
-      activeTab === "office"
-        ? "bg-red-100 text-red-700"
-        : "bg-white"
-    }`}
-  >
-    📢 Announcement
-  </button>
-
-  <button
-    onClick={() =>
-      setActiveTab("employee")
-    }
-    className={`flex-1 p-3 font-semibold ${
-      activeTab === "employee"
-        ? "bg-blue-100 text-blue-700"
-        : "bg-white"
-    }`}
-  >
-    💬 Employee Messages
-  </button>
-
-</div>
-
-{activeTab === "office" && (
-
-<div className="flex flex-col flex-1">
-
-  {/* Messages */}
-
-  <div className="flex-1 p-4 overflow-y-auto">
-
-    {
-  officeMessages.map(
-    (msg: any) => (
-
-      <div
-        key={msg.id}
-        className="p-3 border-b"
-      >
-
-        <div className="font-semibold">
-          {msg.created_by}
-        </div>
-
-        <div>
-          {msg.message}
-        </div>
-
-      </div>
-
-    )
-  )
-}
-
-  </div>
-
-  {/* Only HR/Admin Can Send */}
-
-  {canSendOfficeMessage && (
-
-    <div className="border-t p-4">
-
-      <input
-        type="text"
-        value={officeText}
-        onChange={(e) =>
-          setOfficeText(
-            e.target.value
-          )
-        }
-        placeholder="Type office announcement..."
-        className="
-          w-full
-          border
-          rounded-xl
-          px-4
-          py-3
-        "
-      />
-
+    {/* Tab Header */}
+    <div className="flex items-center border-b border-gray-100">
       <button
-        onClick={sendOfficeMessage}
-        className="
-          mt-2
-          w-full
-          bg-red-600
-          hover:bg-red-700
-          text-white
-          rounded-xl
-          py-3
-        "
+        onClick={() => setActiveTab("office")}
+        className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-[13px] font-medium border-b-2 transition-all
+          ${activeTab === "office"
+            ? "border-orange-500 text-orange-700 bg-orange-50"
+            : "border-transparent text-gray-500 hover:bg-gray-50"}`}
       >
-        Send Announcement
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+        </svg>
+        Announcements
       </button>
 
+      <button
+        onClick={() => setActiveTab("employee")}
+        className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-[13px] font-medium border-b-2 transition-all
+          ${activeTab === "employee"
+            ? "border-blue-500 text-blue-700 bg-blue-50"
+            : "border-transparent text-gray-500 hover:bg-gray-50"}`}
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+        Messages
+      </button>
+
+      <button
+        onClick={() => setShowCommunication(false)}
+        className="w-9 h-9 mr-2 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0"
+      >
+        <XMarkIcon className="w-4 h-4" />
+      </button>
     </div>
 
-  )}
-
-</div>
-
-)}
-
-    
-
-    {/* Employee Messages - Chat Area */}
-    {activeTab === "employee" && (
-
-<div className="flex-1 p-4 overflow-y-auto">
-    <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
-      <div className="flex items-center gap-2 mb-4">
-        <ChatBubbleLeftIcon className="w-5 h-5 text-blue-600" />
-        <h4 className="font-bold text-blue-700 text-sm">Employee Messages</h4>
-      </div>
-
-      <div className="space-y-4">
-        {Array.isArray(employeeMessages) &&
-employeeMessages.map((msg: any) => {
-          const myEmployeeId = Number(localStorage.getItem("employee_id"));
-          const isMyMessage = Number(msg.employee_id) === myEmployeeId;
-
-          return (
-            <div
-              key={msg.id}
-              className={`flex ${isMyMessage ? "justify-end" : "justify-start"}`}
-            >
-              <div className="flex flex-col max-w-[70%]">
-                {!isMyMessage && (
-                  <div className="text-xs text-gray-500 mb-1 ml-1">
-                    {msg.employee_name}
-                  </div>
-                )}
-                <div
-                  className={`
-                    px-4 py-3 rounded-2xl shadow-sm
-                    ${
-                      isMyMessage
-                        ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-md"
-                        : "bg-white text-gray-900 border border-gray-200 rounded-bl-md"
-                    }
-                  `}
-                >
-                  <div className="text-sm">{msg.message}</div>
+    {/* ── ANNOUNCEMENTS PANE ── */}
+    {activeTab === "office" && (
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {officeMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400">
+              <svg className="w-10 h-10 opacity-30" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+              </svg>
+              <p className="text-sm">No announcements yet</p>
+            </div>
+          ) : (
+            officeMessages.map((msg: any) => (
+              <div key={msg.id} className="p-3 rounded-xl bg-orange-50 border-l-[3px] border-orange-400">
+                <div className="text-[11px] font-semibold text-orange-700 mb-1 uppercase tracking-wide">
+                  {msg.created_by}
                 </div>
-                {isMyMessage && (
-                  <div className="text-xs text-gray-400 mt-1 text-right mr-1">
-                    You
+                <div className="text-[13px] text-gray-800 leading-relaxed">{msg.message}</div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {canSendOfficeMessage && (
+          <div className="border-t border-gray-100 p-3">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={officeText}
+                onChange={(e) => setOfficeText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && sendOfficeMessage()}
+                placeholder="Write an announcement..."
+                className="flex-1 text-[13px] px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition-all"
+              />
+              <button
+                onClick={sendOfficeMessage}
+                className="w-10 h-10 rounded-xl bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center flex-shrink-0 transition-colors"
+              >
+                <PaperAirplaneIcon className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* ── MESSAGES PANE ── */}
+    {activeTab === "employee" && (
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {Array.isArray(employeeMessages) && employeeMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400">
+              <svg className="w-10 h-10 opacity-30" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              </svg>
+              <p className="text-sm">No messages yet</p>
+            </div>
+          ) : (
+            Array.isArray(employeeMessages) && employeeMessages.map((msg: any) => {
+              const myEmployeeId = Number(localStorage.getItem("employee_id"));
+              const isMyMessage = Number(msg.employee_id) === myEmployeeId;
+              return (
+                <div key={msg.id} className={`flex gap-2 ${isMyMessage ? "flex-row-reverse" : ""}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 ${isMyMessage ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}>
+                    {msg.employee_name?.charAt(0)?.toUpperCase()}
                   </div>
-                )}
+                  <div className={`flex flex-col gap-1 max-w-[68%] ${isMyMessage ? "items-end" : "items-start"}`}>
+                    {!isMyMessage && (
+                      <span className="text-[11px] text-gray-400 ml-1">{msg.employee_name}</span>
+                    )}
+                    <div className={`px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed
+                      ${isMyMessage
+                        ? "bg-blue-500 text-white rounded-br-[4px]"
+                        : "bg-gray-100 text-gray-900 rounded-bl-[4px]"}`}>
+                      {msg.message}
+                    </div>
+                    <span className="text-[11px] text-gray-400 mx-1">
+                      {isMyMessage ? "You" : ""}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={chatMessagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <div className="border-t border-gray-100 p-3 relative">
+          {selectedUser && (
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-[12px] text-blue-700 font-medium">
+                <UserIcon className="w-3 h-3" />
+                {selectedUser.first_name} {selectedUser.last_name}
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="ml-1 hover:text-red-500 font-bold leading-none"
+                >×</button>
               </div>
             </div>
-          );
-        })}
-      </div>
-    </div>
+          )}
 
-    {/* Input Section */}
-    <div className="border-t bg-white p-4">
-      {showMentionDropdown && (
-        <div
-          className="
-            absolute
-            bottom-20
-            left-4
-            right-4
-            bg-white
-            border
-            border-gray-200
-            rounded-xl
-            shadow-xl
-            max-h-40
-            overflow-y-auto
-            z-50
-          "
-        >
-          {mentionResults.length > 0
-            ? mentionResults.map((emp: any) => (
+          {showMentionDropdown && (
+            <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50 max-h-44 overflow-y-auto">
+              {mentionResults.length > 0 ? mentionResults.map((emp: any) => (
                 <div
                   key={emp.id}
                   onClick={() => {
                     setSelectedUser(emp);
-                    setMessageText(
-                      messageText.replace(/@\w*$/, `@${emp.first_name} `)
-                    );
+                    setMessageText("");
                     setShowMentionDropdown(false);
                   }}
-                  className="p-3 cursor-pointer hover:bg-blue-50 transition-colors flex items-center gap-3"
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors"
                 >
-                  <div className="bg-blue-100 p-2 rounded-full">
-                    <UserIcon className="w-4 h-4 text-blue-600" />
+                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[11px] font-semibold flex-shrink-0">
+                    {emp.first_name?.charAt(0)}
                   </div>
                   <div>
-                    <div className="font-semibold text-sm">
-                      {emp.first_name} {emp.last_name}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      ID: {emp.employee_id}
-                    </div>
+                    <div className="text-[13px] font-medium text-gray-900">{emp.first_name} {emp.last_name}</div>
+                    <div className="text-[11px] text-gray-400">{emp.designation || `ID: ${emp.employee_id}`}</div>
                   </div>
                 </div>
-              ))
-            : (
-              <div className="p-3 text-gray-500 text-sm">No user found</div>
-            )}
-        </div>
-      )}
-
-      <div className="flex gap-3">
-        <div
-          style={{
-            position: "relative",
-            width: "100%"
-          }}
-        >
-          <input
-            type="text"
-            value={messageText}
-            onChange={(e) => {
-              const value = e.target.value;
-              setMessageText(value);
-              const match = value.match(/@(\w*)$/);
-
-              if (match) {
-                const keyword = match[1].toLowerCase();
-                const filtered = employees.filter(
-                  (emp: any) =>
-                    `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(
-                      keyword
-                    )
-                );
-                setMentionResults(filtered);
-                setShowMentionDropdown(true);
-              } else {
-                setShowMentionDropdown(false);
-              }
-            }}
-            placeholder="Type @name to mention someone..."
-            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none text-sm"
-          />
-
-          {selectedUser && (
-            <div
-              className="
-                absolute
-                bottom-full
-                left-0
-                mb-2
-                px-3
-                py-1.5
-                bg-blue-50
-                border
-                border-blue-200
-                rounded-lg
-                text-xs
-                font-semibold
-                text-blue-700
-              "
-            >
-              📤 Sending to: {selectedUser.first_name} {selectedUser.last_name}
+              )) : (
+                <div className="px-4 py-3 text-[13px] text-gray-400">No match found</div>
+              )}
             </div>
           )}
+
+          <div className="flex gap-2 items-end">
+            <input
+              type="text"
+              value={messageText}
+              onChange={(e) => {
+                const value = e.target.value;
+                setMessageText(value);
+                const match = value.match(/@(\w*)$/);
+                if (match) {
+                  const kw = match[1].toLowerCase();
+                  setMentionResults(employees.filter((emp: any) =>
+                    `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(kw)
+                  ));
+                  setShowMentionDropdown(true);
+                } else {
+                  setShowMentionDropdown(false);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (!selectedUser) return;
+                  sendMessage();
+                }
+              }}
+              placeholder="Type @name to mention someone..."
+              className="flex-1 text-[13px] px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+            />
+            <button
+              onClick={() => {
+                if (!selectedUser) {
+                  alert("Please select a user using @mention");
+                  return;
+                }
+                sendMessage();
+              }}
+              className="w-10 h-10 rounded-xl bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center flex-shrink-0 transition-colors"
+            >
+              <PaperAirplaneIcon className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1.5">
+            Type <span className="text-blue-500 font-medium">@</span> to mention a colleague
+          </p>
         </div>
-
-        <button
-          onClick={() => {
-            if (!selectedUser) {
-              alert("Please select user using @mention");
-              return;
-            }
-            sendMessage();
-          }}
-          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white p-3 rounded-xl shadow-lg transition-all transform hover:scale-105"
-        >
-          <PaperAirplaneIcon className="w-5 h-5" />
-        </button>
       </div>
-
-      <div className="mt-2 text-xs text-gray-500">
-        💡 Tip: Type <span className="font-semibold text-blue-600">@</span> to mention an employee
-      </div>
-    </div>
+    )}
   </div>
-)}
-
-</div>
-
 )}
       
     </div>

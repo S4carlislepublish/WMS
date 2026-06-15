@@ -341,9 +341,10 @@ const handleApproveLeave = async (id) => {
   }
 };
 
-  const handleAddEmployee = async () => {
+  const handleAddEmployee = async (e) => {
+    e.preventDefault();
     // Validate mandatory fields
-    if (!newEmp.employee_id || !newEmp.first_name || !newEmp.last_name || !newEmp.email || !newEmp.phone || !newEmp.department || !newEmp.role || !newEmp.joining_date || !newEmp.salary) {
+    if (!newEmp.employee_id || !newEmp.first_name || !newEmp.last_name || !newEmp.email || !newEmp.phone || !newEmp.designation || !newEmp.role || !newEmp.joining_date || !newEmp.salary) {
         return;
     }
 
@@ -586,6 +587,8 @@ const tdStyle = {
   padding: "14px",
   fontSize: 13,
 };
+
+
 
 
   return (
@@ -1993,6 +1996,7 @@ const tdStyle = {
         </div>
 
         <button
+          type="button"
           onClick={() => setAddEmpOpen(false)}
           style={{
             border: "none",
@@ -2236,6 +2240,7 @@ const tdStyle = {
           </button>
 
           <button
+          type="button"
             onClick={handleAddEmployee}
             style={{
               padding: "12px 20px",

@@ -724,18 +724,36 @@ def get_reporting_employees(user_id):
             f"{manager.first_name} {manager.last_name}"
         ).strip().lower()
 
-        employees = Employee.query.all()
+        print("Manager Name:", manager_name)
 
-        yesterday = date.today() - timedelta(days=1)
+        yesterday = (
+            date.today() - timedelta(days=1)
+        )
+
+        reporting_employees = Employee.query.all()
 
         result = []
 
-        for employee in employees:
+        for employee in reporting_employees:
 
             if not employee.reporting_manager:
                 continue
 
-            if employee.reporting_manager.strip().lower() != manager_name:
+            employee_manager = (
+                employee.reporting_manager
+                .strip()
+                .lower()
+            )
+
+            print(
+                "Employee:",
+                employee.first_name,
+                employee.last_name,
+                "Manager:",
+                employee_manager
+            )
+
+            if employee_manager != manager_name:
                 continue
 
             attendance = Attendance.query.filter_by(
@@ -744,45 +762,57 @@ def get_reporting_employees(user_id):
             ).first()
 
             result.append({
-            "employee_id": employee.id,
 
-            "employee_name":
-            f"{employee.first_name} {employee.last_name}",
+                "employee_id":
+                    employee.id,
 
-            "designation":
-                employee.designation,
+                "employee_name":
+                    f"{employee.first_name} {employee.last_name}",
 
-            "profile_image":
-                base64.b64encode(
-            employee.profile_image
-        ).decode("utf-8")
-        if employee.profile_image
-        else None,
+                "designation":
+                    employee.designation,
 
-    "status":
-        attendance.status
-        if attendance
-        else "Absent",
+                "profile_image":
+                    base64.b64encode(
+                        employee.profile_image
+                    ).decode("utf-8")
+                    if employee.profile_image
+                    else None,
 
-    "check_in":
-        attendance.check_in.strftime("%I:%M %p")
-        if attendance and attendance.check_in
-        else "-",
+                "status":
+                    attendance.status
+                    if attendance
+                    else "Absent",
 
-    "check_out":
-        attendance.check_out.strftime("%I:%M %p")
-        if attendance and attendance.check_out
-        else "-",
+                "check_in":
+                    attendance.check_in.strftime("%I:%M %p")
+                    if attendance and attendance.check_in
+                    else "-",
 
-    "working_hours":
-        attendance.total_hours
-        if attendance
-        else 0
-})
+                "check_out":
+                    attendance.check_out.strftime("%I:%M %p")
+                    if attendance and attendance.check_out
+                    else "-",
+
+                "working_hours":
+                    attendance.total_hours
+                    if attendance
+                    else 0
+            })
+
+        print(
+            "Reporting Employees Found:",
+            len(result)
+        )
 
         return jsonify(result)
 
     except Exception as e:
+
+        print(
+            "Reporting Employees Error:",
+            str(e)
+        )
 
         return jsonify({
             "error": str(e)

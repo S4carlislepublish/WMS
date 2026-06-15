@@ -19,39 +19,45 @@ def check_in():
 
         data = request.json
 
+        user_id = data.get("user_id")
+
         today = datetime.now().date()
 
         attendance = Attendance.query.filter_by(
-            user_id=data.get("user_id"),
+            user_id=user_id,
             attendance_date=today
         ).first()
 
+        # Already checked in today
         if attendance:
 
-            attendance.status = "Present"
-            attendance.check_in = datetime.now()
+            return jsonify({
+                "success": False,
+                "message": "You have already checked in today."
+            }), 400
 
-        else:
+        attendance = Attendance(
+            user_id=user_id,
+            attendance_date=today,
+            check_in=datetime.now(),
+            status="Present"
+        )
 
-            attendance = Attendance(
-                user_id=data.get("user_id"),
-                attendance_date=today,
-                check_in=datetime.now(),
-                status="Present"
-            )
-
-            db.session.add(attendance)
+        db.session.add(attendance)
 
         db.session.commit()
 
         return jsonify({
             "success": True,
-            "message": "Checked In"
+            "message": "Checked In Successfully"
         })
 
     except Exception as e:
 
+        db.session.rollback()
+
         return jsonify({
+            "success": False,
             "error": str(e)
         }), 500
 
@@ -62,18 +68,37 @@ def check_out():
 
         data = request.json
 
-        attendance = Attendance.query.filter_by(
-            user_id=data["user_id"],
-            check_out=None
+        user_id = data.get("user_id")
+
+        if not user_id:
+            return jsonify({
+                "success": False,
+                "error": "User ID is required"
+            }), 400
+
+        print("CHECKOUT USER ID:", user_id)
+
+        attendance = Attendance.query.filter(
+            Attendance.user_id == user_id,
+            Attendance.check_in.isnot(None),
+            Attendance.check_out.is_(None)
         ).order_by(
             Attendance.id.desc()
         ).first()
 
+        print("ATTENDANCE FOUND:", attendance)
+
         if not attendance:
             return jsonify({
                 "success": False,
-                "error": "No Check-In Found"
+                "error": "No active check-in found"
             }), 404
+
+        if not attendance.check_in:
+            return jsonify({
+                "success": False,
+                "error": "Check-in time missing"
+            }), 400
 
         attendance.check_out = datetime.now()
 
@@ -82,23 +107,32 @@ def check_out():
             attendance.check_in
         ).total_seconds()
 
-        total_seconds -= (
-            (attendance.total_break_minutes or 0) * 60
+        break_minutes = (
+            attendance.total_break_minutes or 0
         )
+
+        total_seconds -= break_minutes * 60
 
         attendance.total_hours = round(
             total_seconds / 3600,
             2
         )
 
+        attendance.status = "Present"
+
         db.session.commit()
 
         return jsonify({
             "success": True,
+            "message": "Checked Out Successfully",
+            "check_in": attendance.check_in.strftime("%Y-%m-%d %H:%M:%S"),
+            "check_out": attendance.check_out.strftime("%Y-%m-%d %H:%M:%S"),
             "total_hours": attendance.total_hours
-        })
+        }), 200
 
     except Exception as e:
+
+        db.session.rollback()
 
         print("CHECKOUT ERROR:", str(e))
 
@@ -124,7 +158,9 @@ def attendance_status(user_id):
 
     return jsonify({
     "checked_in": True,
-    "check_in": attendance.check_in.isoformat(),
+
+    "check_in":
+        attendance.check_in.isoformat(),
 
     "lunch_break":
         attendance.lunch_break,
@@ -140,7 +176,16 @@ def attendance_status(user_id):
     "tea_start":
         attendance.tea_start.isoformat()
         if attendance.tea_start
-        else None
+        else None,
+
+    "lunch_minutes":
+        attendance.lunch_minutes or 0,
+
+    "tea_minutes":
+        attendance.tea_minutes or 0,
+
+    "total_break_minutes":
+        attendance.total_break_minutes or 0
 })
 
 
@@ -183,27 +228,16 @@ def lunch_break():
 
             attendance.lunch_end = datetime.now()
 
-        if attendance.lunch_start:
-
-             minutes = int(
-            (
-                attendance.lunch_end -
-                attendance.lunch_start
-            ).total_seconds() / 60
-        )
-
-        attendance.lunch_minutes = minutes
-
-        if attendance.lunch_start:
-
-                minutes = int(
-                    (
-                        attendance.lunch_end -
-                        attendance.lunch_start
-                    ).total_seconds() / 60
-                )
-
-                attendance.lunch_minutes = minutes
+        if (
+             attendance.lunch_start and
+             attendance.lunch_end
+            ):
+                attendance.lunch_minutes = int(
+        (
+            attendance.lunch_end -
+            attendance.lunch_start
+        ).total_seconds() / 60
+    )
 
         attendance.total_break_minutes = (
             (attendance.lunch_minutes or 0) +
@@ -260,28 +294,16 @@ def tea_break():
             attendance.tea_break = False
 
             attendance.tea_end = datetime.now()
-
-        if attendance.tea_start:
-
-            minutes = int(
-            (
-                attendance.tea_end -
-                attendance.tea_start
-            ).total_seconds() / 60
-        )
-
-        attendance.tea_minutes = minutes
-
-        if attendance.tea_start:
-
-                minutes = int(
-                    (
-                        attendance.tea_end -
-                        attendance.tea_start
-                    ).total_seconds() / 60
-                )
-
-                attendance.tea_minutes = minutes
+        if (
+            attendance.tea_start and
+            attendance.tea_end
+            ):
+              attendance.tea_minutes = int(
+        (
+            attendance.tea_end -
+            attendance.tea_start
+        ).total_seconds() / 60
+    )
 
         attendance.total_break_minutes = (
             (attendance.lunch_minutes or 0) +

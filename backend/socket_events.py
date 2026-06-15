@@ -1,139 +1,199 @@
 from flask_socketio import (
-    emit,
-    join_room
+emit,
+join_room
 )
 
 from models.database import db
 from models.communication import Communication
 
-
 def register_socket_events(socketio):
 
-    # =====================================
-    # JOIN EMPLOYEE ROOM
-    # =====================================
 
-    @socketio.on("join")
-    def join(data):
+# =====================================
+# JOIN EMPLOYEE ROOM
+# =====================================
 
-        employee_id = str(
-            data["employee_id"]
+  @socketio.on("join")
+  def join(data):
+
+    employee_id = str(
+        data["employee_id"]
+    )
+
+    join_room(employee_id)
+
+    print(
+        f"Employee {employee_id} joined room"
+    )
+
+# =====================================
+# JOIN MANAGER ROOM
+# =====================================
+
+  @socketio.on("join_manager")
+  def join_manager(data):
+
+    manager_name = data.get(
+        "manager_name"
+    )
+
+    join_room(
+        f"manager_{manager_name}"
+    )
+
+    print(
+        f"Manager {manager_name} joined room"
+    )
+
+# =====================================
+# SEND PRIVATE MESSAGE
+# =====================================
+
+  @socketio.on("send_message")
+  def send_message(data):
+
+    try:
+
+        sender_id = data.get(
+            "sender_id"
         )
 
-        join_room(employee_id)
-
-        print(
-            f"Employee {employee_id} joined room"
+        receiver_id = data.get(
+            "receiver_id"
         )
 
-    # =====================================
-    # SEND PRIVATE MESSAGE
-    # =====================================
+        sender_name = data.get(
+            "sender_name"
+        )
 
-    @socketio.on("send_message")
-    def send_message(data):
+        message_text = data.get(
+            "message"
+        )
 
-        try:
+        communication = Communication(
 
-            sender_id = data.get(
-                "sender_id"
+            employee_id=
+                sender_id,
+
+            receiver_id=
+                receiver_id,
+
+            employee_name=
+                sender_name,
+
+            message_type=
+                "employee",
+
+            message=
+                message_text,
+
+            created_by=
+                sender_name
+        )
+
+        db.session.add(
+            communication
+        )
+
+        db.session.commit()
+
+        response = {
+
+            "id":
+                communication.id,
+
+            "employee_id":
+                sender_id,
+
+            "receiver_id":
+                receiver_id,
+
+            "employee_name":
+                sender_name,
+
+            "message":
+                message_text,
+
+            "message_type":
+                "employee",
+
+            "created_by":
+                sender_name,
+
+            "created_at":
+                str(
+                    communication.created_at
+                )
+        }
+
+        emit(
+            "receive_message",
+            response,
+            room=str(
+                receiver_id
             )
+        )
 
-            receiver_id = data.get(
-                "receiver_id"
-            )
+        emit(
+            "message_sent",
+            response
+        )
 
-            sender_name = data.get(
-                "sender_name"
-            )
+    except Exception as e:
 
-            message_text = data.get(
-                "message"
-            )
+        db.session.rollback()
 
-            # Save to PostgreSQL
+        emit(
+            "message_error",
+            {
+                "error":
+                    str(e)
+            }
+        )
 
-            communication = Communication(
+# =====================================
+# SEND MANAGER NOTIFICATION
+# =====================================
 
-                employee_id=
-                    sender_id,
+  @socketio.on("send_notification")
+  def send_notification(data):
 
-                receiver_id=
-                    receiver_id,
+    try:
 
-                employee_name=
-                    sender_name,
+        manager_name = data.get(
+            "manager_name"
+        )
 
-                message_type=
-                    "employee",
+        title = data.get(
+            "title"
+        )
 
-                message=
-                    message_text,
+        message = data.get(
+            "message"
+        )
 
-                created_by=
-                    sender_name
-            )
+        emit(
 
-            db.session.add(
-                communication
-            )
+            "new_notification",
 
-            db.session.commit()
-
-            response = {
-
-                "id":
-                    communication.id,
-
-                "employee_id":
-                    sender_id,
-
-                "receiver_id":
-                    receiver_id,
-
-                "employee_name":
-                    sender_name,
+            {
+                "title":
+                    title,
 
                 "message":
-                    message_text,
+                    message
+            },
 
-                "message_type":
-                    "employee",
+            room=
+                f"manager_{manager_name}"
+        )
 
-                "created_by":
-                    sender_name,
+    except Exception as e:
 
-                "created_at":
-                    str(
-                        communication.created_at
-                    )
+        emit(
+            "message_error",
+            {
+                "error":
+                    str(e)
             }
-
-            # Send only to receiver
-
-            emit(
-                "receive_message",
-                response,
-                room=str(
-                    receiver_id
-                )
-            )
-
-            # Send back to sender
-
-            emit(
-                "message_sent",
-                response
-            )
-
-        except Exception as e:
-
-            db.session.rollback()
-
-            emit(
-                "message_error",
-                {
-                    "error":
-                        str(e)
-                }
-            )
+        )

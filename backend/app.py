@@ -12,6 +12,14 @@ from socket_events import (
     register_socket_events
 )
 
+from apscheduler.schedulers.background import (
+    BackgroundScheduler
+)
+
+from services.checkin_monitor import (
+    check_missed_checkins
+)
+
 
 load_dotenv()
 
@@ -28,6 +36,11 @@ from routes.employees import employees_bp
 from routes.attendance import attendance_bp
 from routes.leaves import leave_bp
 from routes.communications import communication_bp
+from models.shift_request import ShiftRequest
+from routes.shift_request import shift_bp
+from routes.notifications import (
+    notification_bp
+)
 
 def create_app():
     app = Flask(__name__)
@@ -61,6 +74,14 @@ def create_app():
     leave_bp,
     url_prefix="/api/leaves"
 )
+    app.register_blueprint(
+    notification_bp,
+    url_prefix="/api/notifications"
+)
+    app.register_blueprint(
+    shift_bp,
+    url_prefix="/api/shifts"
+)
 
 
     # JWT
@@ -68,6 +89,22 @@ def create_app():
 
     # Initialize database
     init_db(app)
+
+    # Check missed check-ins every minute
+
+    scheduler = BackgroundScheduler()
+
+    def run_checkin_monitor():
+       with app.app_context():
+        check_missed_checkins()
+
+    scheduler.add_job(
+    run_checkin_monitor,
+    "interval",
+    minutes=1
+)
+
+    scheduler.start()
 
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')

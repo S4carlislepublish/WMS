@@ -173,33 +173,83 @@ const EmployeeDashboardPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [showLeaveForm, setShowLeaveForm] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [editingLeave, setEditingLeave] =
   useState<any>(null);
 
-  const [birthdayModal, setBirthdayModal] =
+
+const [birthdayModal, setBirthdayModal] =
   useState(false);
 
+  const [attendanceModal, setAttendanceModal] = useState(false);
+
+
 const [birthdayEmployees, setBirthdayEmployees] =
-  useState([]);
+  useState<any[]>([]);
+
+  useEffect(() => {
+
+  if (
+    birthdayEmployees.length > 0 &&
+    !sessionStorage.getItem(
+      "birthday_popup_shown"
+    )
+  ) {
+
+    setBirthdayModal(true);
+
+    sessionStorage.setItem(
+      "birthday_popup_shown",
+      "true"
+    );
+  }
+
+}, [birthdayEmployees]);
+
+useEffect(() => {
+
+  if (
+    !birthdayModal &&
+    !sessionStorage.getItem(
+      "attendance_popup_shown"
+    )
+  ) {
+
+    setAttendanceModal(true);
+
+    sessionStorage.setItem(
+      "attendance_popup_shown",
+      "true"
+    );
+  }
+
+}, [birthdayModal]);
+
+
 
   const fetchTodayBirthdays = async () => {
   try {
-
     const res = await fetch(
       "http://10.1.8.103:5000/api/employees/birthdays/today"
     );
 
-    const data = await res.json();
-
-    if (data.length > 0) {
-      setBirthdayEmployees(data);
+    if (!res.ok) {
+      throw new Error("Failed to load birthdays");
     }
 
+    const data = await res.json();
+
+    console.log("Birthday API:", data);
+
+    setBirthdayEmployees(
+      Array.isArray(data) ? data : []
+    );
+
   } catch (err) {
-    console.log(err);
+    console.error("Birthday Error:", err);
+    setBirthdayEmployees([]);
   }
 };
+
 
 const [showEditModal, setShowEditModal] =
   useState(false);
@@ -236,7 +286,7 @@ const [leaveRequests, setLeaveRequests] =
 });
 
 useEffect(() => {
-  fetchTodayBirthdays(),
+  fetchTodayBirthdays();
   loadLeaves();
 }, []);
 
@@ -270,10 +320,10 @@ useEffect(() => {
     );
 
     let days =
-      Math.ceil(
-        (end - start) /
-          (1000 * 60 * 60 * 24)
-      ) + 1;
+  Math.ceil(
+    (end.getTime() - start.getTime()) /
+    (1000 * 60 * 60 * 24)
+  ) + 1;
 
     if (
       leaveForm.leaveDuration ===
@@ -299,7 +349,9 @@ useEffect(() => {
 const [attendanceData, setAttendanceData] =
   useState<Attendance[]>([]);
 
-  useEffect(() => {
+  
+
+useEffect(() => {
 
   const userId =
     localStorage.getItem("user_id");
@@ -309,8 +361,13 @@ const [attendanceData, setAttendanceData] =
   fetch(
     `http://10.1.8.103:5000/api/attendance/status/${userId}`
   )
-    .then(res => res.json())
-    .then(data => {
+    .then((res) => res.json())
+    .then((data) => {
+
+      console.log(
+        "Attendance Status:",
+        data
+      );
 
       if (data.checked_in) {
 
@@ -328,6 +385,7 @@ const [attendanceData, setAttendanceData] =
           data.tea_break || false
         );
 
+        // Restore break start times
         if (data.lunch_start) {
 
           setLunchStartTime(
@@ -344,7 +402,46 @@ const [attendanceData, setAttendanceData] =
 
         }
 
+        // Restore stored minutes
+        setLunchMinutes(
+  data.lunch_minutes || 0
+);
+
+setTeaMinutes(
+  data.tea_minutes || 0
+);
+
+setTotalLunchSeconds(
+  (data.lunch_minutes || 0) * 60
+);
+
+setTotalTeaSeconds(
+  (data.tea_minutes || 0) * 60
+);
+
+        setTotalBreakMinutes(
+          data.total_break_minutes || 0
+        );
+
+      } else {
+
+        setIsCheckedIn(false);
+
+        setLunchMinutes(0);
+
+        setTeaMinutes(0);
+
+        setTotalBreakMinutes(0);
+
       }
+
+    })
+    .catch((error) => {
+
+      console.error(
+        "Attendance Status Error:",
+        error
+      );
 
     });
 
@@ -365,10 +462,11 @@ const tabs = [
   { id: 'overview', label: 'Overview', icon: HomeIcon },
   { id: 'tasks', label: 'My Tasks', icon: CheckCircleIcon },
   { id: 'leave', label: 'Leave Requests', icon: CalendarDaysIcon },
+      { id: "shift", label: "Shift Request", icon: ClockIcon },
   { id: 'attendance', label: 'Attendance', icon: ClockIcon },
   { id: 'performance', label: 'Performance', icon: ChartBarIcon },
   { id: 'profile', label: 'Profile', icon: UserCircleIcon },
-  { id: 'feedback', label: 'Feedback', icon: ChatBubbleLeftRightIcon },
+
 ];
 
 const [isCheckedIn, setIsCheckedIn] = useState(false);
@@ -385,8 +483,94 @@ const [teaTime, setTeaTime] = useState(0);
   const [isLunchBreak, setIsLunchBreak] =
   useState(false);
 
+  const [lunchMinutes,setLunchMinutes] =
+useState(0);
+
+const [teaMinutes,setTeaMinutes] =
+useState(0);
+
+
+const [shiftTab, setShiftTab] =
+useState("my");
+
+const [
+  managerShiftRequests,
+  setManagerShiftRequests
+] = useState([]);
+
+  const [shiftRequests, setShiftRequests] = useState<any[]>([]);
+
+const [showShiftForm,setShowShiftForm] =
+useState(false);
+
+const [shiftForm,setShiftForm] =
+useState({
+  requestedShift:"",
+  reason:""
+});
+
+
+
+const approveShift =
+async (id:number) => {
+
+  const response =
+    await fetch(
+      `http://10.1.8.103:5000/api/shifts/approve/${id}`,
+      {
+        method:"PUT"
+      }
+    );
+
+  const data =
+    await response.json();
+
+  if(data.success){
+
+    toast.success(
+      "Shift Approved Successfully"
+    );
+
+    loadShiftRequests();
+
+    loadManagerShiftRequests();
+
+  }
+
+};
+
+const rejectShift =
+async (id:number) => {
+
+  const response =
+    await fetch(
+      `http://10.1.8.103:5000/api/shifts/reject/${id}`,
+      {
+        method:"PUT"
+      }
+    );
+
+  const data =
+    await response.json();
+
+  if(data.success){
+
+    toast.success(
+      "Shift Rejected"
+    );
+
+    loadShiftRequests();
+
+    loadManagerShiftRequests();
+
+  }
+
+};
+
 const [isTeaBreak, setIsTeaBreak] =
   useState(false);
+
+  const [confirmModal, setConfirmModal] = useState(false);
 
 const [lunchStartTime, setLunchStartTime] =
   useState<Date | null>(null);
@@ -401,7 +585,133 @@ const [totalLunchSeconds, setTotalLunchSeconds] =
 const [totalTeaSeconds, setTotalTeaSeconds] =
   useState(0);
 
+const [popup, setPopup] = useState({
+  show: false,
+  type: "success",
+  title: "",
+  message: "",
+});
 
+const submitShiftRequest = async () => {
+
+  try {
+
+    if (!currentEmployee) {
+
+      toast.error(
+        "Employee details not found"
+      );
+
+      return;
+    }
+    console.log("Current Employee:", currentEmployee);
+
+    const response = await fetch(
+      "http://10.1.8.103:5000/api/shifts/",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+
+          employee_id:
+            currentEmployee.user_id,
+
+          employee_name:
+            `${currentEmployee.first_name} ${currentEmployee.last_name}`,
+
+          current_shift:
+            "General Shift",
+
+          requested_shift:
+            shiftForm.requestedShift,
+
+          reporting_manager:
+            currentEmployee.reporting_manager,
+
+          reason:
+            shiftForm.reason
+        })
+      }
+    );
+
+    const data =
+      await response.json();
+
+    console.log(
+      "Shift Response:",
+      data
+    );
+
+    if (!response.ok) {
+
+      toast.error(
+        data.message ||
+        "Failed to submit shift request"
+      );
+
+      return;
+    }
+
+    if (data.success) {
+
+      toast.success(
+        "Shift Request Submitted Successfully"
+      );
+
+      loadShiftRequests();
+
+      setShowShiftForm(false);
+
+      setShiftForm({
+        requestedShift: "",
+        reason: ""
+      });
+
+    } else {
+
+      toast.error(
+        data.message ||
+        "Request Failed"
+      );
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Shift Request Error:",
+      error
+    );
+
+    toast.error(
+      "Server Error"
+    );
+  }
+};
+
+const showPopup = (
+  type: string,
+  title: string,
+  message: string
+) => {
+  setPopup({
+    show: true,
+    type,
+    title,
+    message,
+  });
+
+  setTimeout(() => {
+    setPopup((prev) => ({
+      ...prev,
+      show: false,
+    }));
+  }, 3000);
+};
 
 
   const formatTime = (ms: number) => {
@@ -414,9 +724,16 @@ const [totalTeaSeconds, setTotalTeaSeconds] =
 
   const handleCheckIn = async () => {
   try {
+    const userId = localStorage.getItem("user_id");
 
-    const userId =
-      localStorage.getItem("user_id");
+    if (!userId) {
+      showPopup(
+        "error",
+        "User Not Found",
+        "Unable to identify current user."
+      );
+      return;
+    }
 
     const response = await fetch(
       "http://10.1.8.103:5000/api/attendance/checkin",
@@ -430,52 +747,82 @@ const [totalTeaSeconds, setTotalTeaSeconds] =
         }),
       }
     );
-    
 
     const data = await response.json();
 
-    console.log(data);
-
-    if (data.success) {
-
-      const now = new Date();
-
-      setIsCheckedIn(true);
-
-      setCheckInTime(now);
-
-      localStorage.setItem(
-  `checkInTime_${userId}`,
-  now.toISOString()
-);
-
+    if (!response.ok) {
+      showPopup(
+        "error",
+        "Check In Failed",
+        data.message ||
+          data.error ||
+          "Check In Failed"
+      );
+      return;
     }
 
+    showPopup(
+      "success",
+      "Check In Successful",
+      data.message ||
+        "You have checked in successfully."
+    );
+
+    // Refresh page after successful check-in
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+
   } catch (error) {
+    console.error(
+      "Check In Error:",
+      error
+    );
 
-    console.error(error);
-
+    showPopup(
+      "error",
+      "Check In Error",
+      "Something went wrong while checking in."
+    );
   }
 };
+    
 
 const handleCheckOut = async () => {
 
   try {
 
     if (isLunchBreak) {
-      alert("Please End Lunch Break before Check Out.");
+      showPopup(
+  "warning",
+  "Lunch Break Active",
+  "Please stop lunch break before checkout."
+);
       return;
     }
 
     if (isTeaBreak) {
-      alert("Please End Tea Break before Check Out.");
+      showPopup(
+  "warning",
+  "Tea Break Active",
+  "Please stop tea break before checkout."
+);
       return;
     }
 
-    const userId = localStorage.getItem("user_id");
+    
+
+    const userId =
+      localStorage.getItem(
+        "user_id"
+      );
 
     if (!userId) {
-      alert("User ID not found.");
+
+      alert(
+        "User ID not found."
+      );
+
       return;
     }
 
@@ -483,31 +830,47 @@ const handleCheckOut = async () => {
       "http://10.1.8.103:5000/api/attendance/checkout",
       {
         method: "POST",
+
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type":
+            "application/json",
         },
+
         body: JSON.stringify({
           user_id: Number(userId),
         }),
       }
     );
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
-    console.log("Checkout Response:", data);
+    console.log(
+      "Checkout Response:",
+      data
+    );
 
     if (!response.ok) {
-      alert(data.error || "Checkout Failed");
+
+      alert(
+        data.error ||
+        "Checkout Failed"
+      );
+
       return;
     }
 
-    const attendanceResponse = await fetch(
-      `http://10.1.8.103:5000/api/attendance/history/${userId}`
+    const attendanceResponse =
+      await fetch(
+        `http://10.1.8.103:5000/api/attendance/history/${userId}`
+      );
+
+    const attendanceHistory =
+      await attendanceResponse.json();
+
+    setAttendanceData(
+      attendanceHistory
     );
-
-    const attendanceHistory = await attendanceResponse.json();
-
-    setAttendanceData(attendanceHistory);
 
     setIsCheckedIn(false);
 
@@ -515,21 +878,42 @@ const handleCheckOut = async () => {
 
     setTimer("00:00:00");
 
-    localStorage.removeItem(`checkInTime_${userId}`);
+    localStorage.removeItem(
+      `checkInTime_${userId}`
+    );
 
-    alert("Checked Out Successfully");
+    showPopup(
+  "success",
+  "Check Out Successful",
+  "You have checked out successfully."
+);
 
   } catch (error) {
 
-    console.error("Checkout Error:", error);
+    console.error(
+      "Checkout Error:",
+      error
+    );
 
-    alert("Something went wrong while checking out.");
+    alert(
+      "Something went wrong while checking out."
+    );
 
   }
-
 };
 
 const handleLunchBreak = async () => {
+
+  // CHECK IF EMPLOYEE IS CHECKED IN
+  if (!isCheckedIn) {
+
+    showPopup(
+      "Check-In Required",
+      "Please check in before starting Lunch Break."
+    );
+
+    return;
+  }
 
   try {
 
@@ -566,6 +950,7 @@ const handleLunchBreak = async () => {
           body: JSON.stringify({
             user_id:
               Number(userId),
+
             action:
               "start"
           })
@@ -637,11 +1022,28 @@ const handleLunchBreak = async () => {
       error
     );
 
+    showPopup(
+      "Error",
+      "Something went wrong."
+    );
+
   }
 
 };
 
 const handleTeaBreak = async () => {
+
+  // CHECK IF EMPLOYEE IS CHECKED IN
+
+  if (!isCheckedIn) {
+
+    showPopup(
+      "Check-In Required",
+      "Please check in before starting Tea Break."
+    );
+
+    return;
+  }
 
   try {
 
@@ -650,7 +1052,9 @@ const handleTeaBreak = async () => {
         "user_id"
       );
 
-    if (!userId) return;
+    if (!userId) {
+      return;
+    }
 
     // START TEA BREAK
 
@@ -660,26 +1064,35 @@ const handleTeaBreak = async () => {
         new Date()
       );
 
-      setIsTeaBreak(true);
+      setIsTeaBreak(
+        true
+      );
 
       await fetch(
         "http://10.1.8.103:5000/api/attendance/tea-break",
         {
           method: "POST",
+
           headers: {
             "Content-Type":
               "application/json"
           },
+
           body: JSON.stringify({
-            user_id: Number(userId),
-            action: "start"
+            user_id:
+              Number(userId),
+
+            action:
+              "start"
           })
         }
       );
 
-    } else {
+    }
 
-      // STOP TEA BREAK
+    // STOP TEA BREAK
+
+    else {
 
       if (!teaStartTime) {
         return;
@@ -701,21 +1114,33 @@ const handleTeaBreak = async () => {
           prev + seconds
       );
 
-      setIsTeaBreak(false);
+      setIsTeaBreak(
+        false
+      );
 
-      setTeaStartTime(null);
+      setTeaStartTime(
+        null
+      );
 
       await fetch(
         "http://10.1.8.103:5000/api/attendance/tea-break",
         {
           method: "POST",
+
           headers: {
             "Content-Type":
               "application/json"
           },
+
           body: JSON.stringify({
-            user_id: Number(userId),
-            action: "stop"
+            user_id:
+              Number(userId),
+
+            action:
+              "stop",
+
+            break_seconds:
+              seconds
           })
         }
       );
@@ -727,6 +1152,11 @@ const handleTeaBreak = async () => {
     console.error(
       "Tea Break Error:",
       error
+    );
+
+    showPopup(
+      "Error",
+      "Something went wrong while handling Tea Break."
     );
 
   }
@@ -1010,34 +1440,17 @@ useEffect(() => {
 ]);
 
 
-useEffect(() => {
 
-  const userId =
-    localStorage.getItem("user_id");
+const userId = user?.id || Number(localStorage.getItem("user_id"));
 
-  if (!userId) return;
-
-  fetch(
-    `http://10.1.8.103:5000/api/attendance/status/${userId}`
-  )
-    .then(res => res.json())
-    .then(data => {
-
-      if (data.checked_in) {
-
-        setIsCheckedIn(true);
-
-        setCheckInTime(
-          new Date(data.check_in)
-        );
-      }
-    });
-
-}, []);
-
-const currentEmployee = employees.find(
-  (emp) => Number(emp.user_id) === Number(user?.id)
-);
+const currentEmployee =
+  Array.isArray(employees)
+    ? employees.find(
+        (emp: any) =>
+          Number(emp.user_id) ===
+          Number(user?.id)
+      )
+    : null;
 
 // console.log("User ID:", user?.id);
 // console.log("Employees:", employees);
@@ -1282,36 +1695,7 @@ const initials =
 }, []);
 
 
-  useEffect(()=>{
-    setBirthdayModal(true)
-  })
 
-// useEffect(() => {
-
-//   const userId =
-//     localStorage.getItem("user_id");
-
-//   if (!userId) return;
-
-//   if (birthdayEmployees.length === 0) return;
-
-//   const loginBirthdayShown =
-//     sessionStorage.getItem(
-//       `birthday_shown_${userId}`
-//     );
-
-//   if (!loginBirthdayShown) {
-
-//     setBirthdayModal(true);
-
-//     sessionStorage.setItem(
-//       `birthday_shown_${userId}`,
-//       "true"
-//     );
-
-//   }
-
-// }, [birthdayEmployees]);
 
 const handleLogout = () => {
 
@@ -1356,269 +1740,389 @@ const sendBirthdayWish = async (emp: any) => {
           `🎂 Happy Birthday ${emp.first_name}! Wishing you happiness, success and prosperity. 🎉`
       })
     }
+    
   );
 };
 
 
 
+// More robust comparison:
+const isMyBirthday =
+  birthdayEmployees.some(
+    (emp: any) =>
+      Number(emp.user_id) ===
+      Number(user?.id)
+  );
+
+  console.log(
+  "Birthday Employees:",
+  birthdayEmployees
+);
+
+console.log(
+  "Birthday Modal:",
+  birthdayModal
+);
+
+console.log(
+  "User:",
+  user
+);
+
+useEffect(() => {
+
+  if (
+    birthdayModal &&
+    isMyBirthday
+  ) {
+
+    const timer = setTimeout(() => {
+
+      setBirthdayModal(false);
+
+      setAttendanceModal(true);
+
+    }, 5000);
+
+    return () =>
+      clearTimeout(timer);
+  }
+
+}, [
+  birthdayModal,
+  isMyBirthday
+]);
+
+const loadShiftRequests = async () => {
+
+  if (!currentEmployee?.user_id) return;
+
+  try {
+
+    const response = await fetch(
+      `http://10.1.8.103:5000/api/shifts/employee/${currentEmployee.user_id}`
+    );
+
+    const data = await response.json();
+
+    setShiftRequests(
+      Array.isArray(data) ? data : []
+    );
+
+  } catch (err) {
+
+    console.log(err);
+
+  }
+};
+
+const loadManagerShiftRequests =
+async () => {
+
+  try {
+
+    const response =
+      await fetch(
+        "http://10.1.8.103:5000/api/shifts/approvals"
+      );
+
+    const data =
+      await response.json();
+
+    setManagerShiftRequests(
+      Array.isArray(data)
+        ? data
+        : []
+    );
+
+  } catch (err) {
+
+    console.log(err);
+
+  }
+
+};
+
+useEffect(() => {
+
+  if (
+    activeTab === "shift"
+  ) {
+
+    loadShiftRequests();
+
+    loadManagerShiftRequests();
+
+  }
+
+}, [activeTab]);
+
+
+
+
   return (
+
+    <>
+
+  
+
+    {
+  confirmModal && (
+    <div className="fixed inset-0 z-[999999] bg-black/50 backdrop-blur-sm flex items-center justify-center">
+
+      <div className="bg-white rounded-2xl w-[450px] shadow-2xl">
+
+        <div className="bg-red-600 text-white p-4 text-lg font-semibold">
+          Confirm Check Out
+        </div>
+
+        <div className="p-6">
+
+          <div className="text-center text-5xl mb-4">
+            ⚠️
+          </div>
+
+          <p className="text-center text-gray-700">
+            Are you sure you want to Check Out?
+          </p>
+
+          <p className="text-center text-sm text-gray-500 mt-2">
+            After checkout, you cannot check in again today.
+          </p>
+
+          <div className="flex justify-center gap-3 mt-6">
+
+            <button
+              onClick={() => setConfirmModal(false)}
+              className="px-5 py-2 bg-gray-200 rounded-lg"
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={() => {
+                setConfirmModal(false);
+                handleCheckOut();
+              }}
+              className="px-5 py-2 bg-red-600 text-white rounded-lg"
+            >
+              Yes, Check Out
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  )
+}
+  {popup.show && (
+    <div className="fixed inset-0 z-[99999] bg-black/40 backdrop-blur-sm flex items-center justify-center">
+
+      <div className="bg-white w-[420px] rounded-2xl shadow-2xl overflow-hidden">
+
+        <div
+          className={`px-6 py-4 text-white font-semibold ${
+            popup.type === "success"
+              ? "bg-green-600"
+              : popup.type === "error"
+              ? "bg-red-600"
+              : popup.type === "warning"
+              ? "bg-yellow-500"
+              : "bg-blue-600"
+          }`}
+        >
+          {popup.title}
+        </div>
+
+        <div className="p-6 text-center">
+
+          <div className="text-5xl mb-4">
+            {popup.type === "success"
+              ? "✅"
+              : popup.type === "error"
+              ? "❌"
+              : popup.type === "warning"
+              ? "⚠️"
+              : "ℹ️"}
+          </div>
+
+          <p className="text-gray-700">
+            {popup.message}
+          </p>
+
+          <button
+            onClick={() =>
+              setPopup({
+                ...popup,
+                show: false,
+              })
+            }
+            className="mt-5 bg-gray-800 text-white px-5 py-2 rounded-lg"
+          >
+            OK
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+  )}
+
+  <div className="min-h-screen bg-gray-100">
+
 
     
     <div className="min-h-screen bg-gray-100">
 
       
       {birthdayModal && birthdayEmployees.length > 0 && (
+  <div className="fixed top-5 right-5 z-[9999] w-[380px]">
+    {isMyBirthday ? (<div className="fixed inset-0 z-[99999] bg-gradient-to-br from-pink-500 via-purple-600 to-orange-400 flex items-center justify-center overflow-hidden">
 
-<div className="fixed top-5 right-5 z-[9999] w-[380px]">
+  {/* Floating Background */}
 
-  {birthdayEmployees.some(
-    (emp: any) => emp.id === currentEmployee?.id
-  ) ? (
+  <div className="absolute inset-0 animate-pulse opacity-20">
+    <div className="absolute top-10 left-20 text-8xl">🎉</div>
+    <div className="absolute top-32 right-32 text-7xl">🎂</div>
+    <div className="absolute bottom-20 left-40 text-8xl">🎈</div>
+    <div className="absolute bottom-32 right-20 text-7xl">🎊</div>
+  </div>
 
-    /* CURRENT USER BIRTHDAY */
+  {/* Main Card */}
 
-    <div className="
-      bg-white
-      rounded-3xl
-      shadow-2xl
-      border
-      border-pink-200
-      overflow-hidden
-    ">
+  <div className="relative bg-white rounded-[40px] shadow-2xl w-[900px] max-w-[95%] p-10 text-center">
 
-      <div className="
-        bg-gradient-to-r
-        from-pink-500
-        via-purple-500
-        to-orange-400
-        px-5
-        py-4
-        flex
-        justify-between
-        items-center
-      ">
+    {/* Close Button */}
 
-        <h2 className="text-white font-bold text-lg">
-          🎂 Happy Birthday
-        </h2>
+    <button
+      onClick={() => setBirthdayModal(false)}
+      className="absolute top-5 right-5 w-12 h-12 rounded-full bg-red-500 text-white text-2xl hover:bg-red-600"
+    >
+      ✕
+    </button>
 
-        <button
-          onClick={() => setBirthdayModal(false)}
-          className="
-            text-white
-            text-xl
-            font-bold
-            hover:scale-110
-            transition-all
-          "
-        >
-          ✕
-        </button>
+    {/* Title */}
 
-      </div>
+    <h1 className="text-6xl font-extrabold text-pink-600 mb-4">
+      🎂 HAPPY BIRTHDAY 🎂
+    </h1>
 
-      <div className="p-6 text-center">
+    <p className="text-gray-600 text-xl mb-8">
+      Wishing you a day filled with happiness,
+      success and wonderful memories.
+    </p>
 
-        <img
-          src={`http://10.1.8.103:5000/api/employees/image/${currentEmployee?.id}`}
-          alt="Birthday"
-          className="
-            w-24
-            h-24
-            rounded-full
-            object-cover
-            border-4
-            border-pink-300
-            mx-auto
-            shadow-xl
-          "
-          onError={(e) => {
-            e.currentTarget.src =
-            "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-          }}
-        />
+    {/* Employee Image */}
 
-        <h3 className="
-          mt-4
-          text-xl
-          font-bold
-          text-slate-800
-        ">
-          {user?.full_name}
-        </h3>
+    <img
+      src={`http://10.1.8.103:5000/api/employees/image/${currentEmployee?.id}`}
+      alt="Birthday"
+      className="
+        w-52
+        h-52
+        rounded-full
+        object-cover
+        border-[8px]
+        border-pink-300
+        mx-auto
+        shadow-2xl
+      "
+      onError={(e) => {
+        e.currentTarget.src =
+          "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+      }}
+    />
 
-        <p className="
-          mt-2
-          text-sm
-          text-slate-600
-        ">
-          Wishing you happiness,
-          success and prosperity.
-        </p>
+    {/* Name */}
 
-        <div className="
-          mt-4
-          bg-pink-50
-          border
-          border-pink-200
-          rounded-xl
-          p-3
-        ">
-          🎉 Have a wonderful year ahead!
+    <h2 className="mt-8 text-4xl font-bold text-gray-800">
+      {user?.full_name}
+    </h2>
+
+    <div className="mt-6 bg-pink-50 border border-pink-200 rounded-2xl p-6">
+
+      <p className="text-lg text-gray-700 leading-8">
+        May your special day bring you
+        happiness, prosperity, good health,
+        and great success in both your
+        personal and professional life.
+      </p>
+
+    </div>
+
+    {/* Wishes */}
+
+    <div className="mt-8 text-2xl font-semibold text-pink-600">
+      🎉 Have a Wonderful Year Ahead 🎉
+    </div>
+
+  </div>
+
+</div>) : (
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-800 to-gray-600 px-5 py-4 flex justify-between items-center">
+          <h2 className="text-white font-semibold text-base">
+            🎉 Today's Birthdays
+          </h2>
+
+          <button
+            onClick={() => setBirthdayModal(false)}
+            className="text-white text-xl leading-none hover:opacity-80 transition-opacity"
+          >
+            ✕
+          </button>
         </div>
 
-      </div>
+        <div className="max-h-[350px] overflow-y-auto p-4 space-y-3">
+          {birthdayEmployees.map((emp: any) => (
+            <div
+              key={emp.id}
+              className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-colors"
+            >
+              <img
+                src={`http://10.1.8.103:5000/api/employees/image/${emp.id}`}
+                alt={emp.first_name}
+                className="w-14 h-14 rounded-full object-cover border border-gray-300 shadow-sm"
+                onError={(e) => {
+                  e.currentTarget.src =
+                    "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                }}
+              />
 
-    </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-gray-800 truncate">
+                  {emp.first_name} {emp.last_name}
+                </h3>
 
-  ) : (
+                <p className="text-xs text-gray-500 truncate">
+                  {emp.designation}
+                </p>
 
-    /* OTHER EMPLOYEE BIRTHDAY */
+                <p className="text-xs text-gray-700 font-medium mt-0.5">
+                  🎂 Birthday Today
+                </p>
+              </div>
 
-    <div className="
-      bg-white
-      rounded-3xl
-      shadow-2xl
-      border
-      border-pink-200
-      overflow-hidden
-    ">
-
-      <div className="
-        bg-gradient-to-r
-        from-pink-500
-        to-orange-400
-        px-5
-        py-4
-        flex
-        justify-between
-        items-center
-      ">
-
-        <h2 className="
-          text-white
-          font-bold
-          text-lg
-        ">
-          🎉 Today's Birthdays
-        </h2>
-
-        <button
-          onClick={() => setBirthdayModal(false)}
-          className="
-            text-white
-            text-xl
-            font-bold
-          "
-        >
-          ✕
-        </button>
-
-      </div>
-
-      <div className="
-        max-h-[350px]
-        overflow-y-auto
-        p-4
-        space-y-3
-      ">
-
-        {birthdayEmployees.map((emp: any) => (
-
-          <div
-            key={emp.id}
-            className="
-              flex
-              items-center
-              gap-3
-              p-3
-              rounded-2xl
-              bg-pink-50
-              border
-              border-pink-100
-            "
-          >
-
-            <img
-              src={`http://10.1.8.103:5000/api/employees/image/${emp.id}`}
-              alt={emp.first_name}
-              className="
-                w-14
-                h-14
-                rounded-full
-                object-cover
-                border-2
-                border-pink-300
-              "
-              onError={(e) => {
-                e.currentTarget.src =
-                "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-              }}
-            />
-
-            <div className="flex-1">
-
-              <h3 className="
-                font-semibold
-                text-slate-800
-              ">
-                {emp.first_name} {emp.last_name}
-              </h3>
-
-              <p className="
-                text-xs
-                text-slate-500
-              ">
-                {emp.designation}
-              </p>
-
-              <p className="
-                text-xs
-                text-pink-600
-                font-medium
-              ">
-                🎂 Birthday Today
-              </p>
-
+              <button
+                onClick={() => sendBirthdayWish(emp)}
+                className="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
+              >
+                Wishes
+              </button>
             </div>
-<button
-  onClick={() => sendBirthdayWish(emp)}
-  className="
-    bg-pink-500
-    hover:bg-pink-600
-    text-white
-    px-3
-    py-2
-    rounded-xl
-    text-xs
-    font-semibold
-  "
->
-  Wishes
-</button>
+          ))}
+        </div>
 
-          </div>
-
-        ))}
-
+        <div className="text-center text-xs text-gray-500 py-3 border-t border-gray-200 bg-gray-50">
+          — S4 Carlisle Publishing Services
+        </div>
       </div>
-
-      <div className="
-        text-center
-        text-xs
-        text-slate-400
-        py-3
-        border-t
-      ">
-        — S4 Carlisle Publishing Services
-      </div>
-
-    </div>
-
-  )}
-
-</div>
-
+    )}
+  </div>
 )}
       
 
@@ -1841,7 +2345,13 @@ const sendBirthdayWish = async (emp: any) => {
   {/* Action Buttons */}
   <div className="px-6 py-4 grid grid-cols-3 gap-3">
     <button
-      onClick={isCheckedIn ? handleCheckOut : handleCheckIn}
+      onClick={() => {
+  if (isCheckedIn) {
+    setConfirmModal(true);
+  } else {
+    handleCheckIn();
+  }
+}}
       className={`py-3 rounded-xl text-sm font-bold text-white transition-all ${
         isCheckedIn
           ? "bg-red-500 hover:bg-red-600"
@@ -1852,26 +2362,40 @@ const sendBirthdayWish = async (emp: any) => {
     </button>
 
     <button
-      onClick={handleLunchBreak}
-      className={`py-3 rounded-xl text-sm font-bold border transition-all ${
-        isLunchBreak
-          ? "bg-red-50 border-red-300 text-red-600 hover:bg-red-100"
-          : "bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
-      }`}
-    >
-      {isLunchBreak ? "⏹ Stop Lunch" : "🍱 Lunch Break"}
-    </button>
+  onClick={handleLunchBreak}
+  disabled={!isCheckedIn}
+  className={`py-3 rounded-xl text-sm font-bold border transition-all ${
+    !isCheckedIn
+      ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
+      : isLunchBreak
+      ? "bg-red-50 border-red-300 text-red-600 hover:bg-red-100"
+      : "bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
+  }`}
+>
+  {!isCheckedIn
+    ? "🔒 Check In Required"
+    : isLunchBreak
+    ? "⏹ Stop Lunch"
+    : "🍱 Lunch Break"}
+</button>
 
     <button
-      onClick={handleTeaBreak}
-      className={`py-3 rounded-xl text-sm font-bold border transition-all ${
-        isTeaBreak
-          ? "bg-red-50 border-red-300 text-red-600 hover:bg-red-100"
-          : "bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
-      }`}
-    >
-      {isTeaBreak ? "⏹ Stop Tea" : "☕ Tea Break"}
-    </button>
+  onClick={handleTeaBreak}
+  disabled={!isCheckedIn}
+  className={`py-3 rounded-xl text-sm font-bold border transition-all ${
+    !isCheckedIn
+      ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
+      : isTeaBreak
+      ? "bg-red-50 border-red-300 text-red-600 hover:bg-red-100"
+      : "bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+  }`}
+>
+  {!isCheckedIn
+    ? "🔒 Check In Required"
+    : isTeaBreak
+    ? "⏹ Stop Tea"
+    : "☕ Tea Break"}
+</button>
   </div>
 
 </div>
@@ -2103,6 +2627,378 @@ const sendBirthdayWish = async (emp: any) => {
               </div>
             </>
           )}
+
+          {showShiftForm && (
+
+<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+
+  <div className="bg-white w-[500px] rounded-xl p-6">
+
+    <h2 className="text-xl font-bold mb-4">
+      Apply Shift Request
+    </h2>
+
+    <select
+      value={shiftForm.requestedShift}
+      onChange={(e)=>
+        setShiftForm({
+          ...shiftForm,
+          requestedShift:e.target.value
+        })
+      }
+      className="w-full border p-3 rounded mb-4"
+    >
+      <option value="">
+        Select Shift
+      </option>
+
+      <option value="Morning Shift">
+        Morning Shift
+      </option>
+
+      <option value="General Shift">
+        General Shift
+      </option>
+
+      <option value="Night Shift">
+        Night Shift
+      </option>
+
+    </select>
+
+    <textarea
+      placeholder="Reason"
+      value={shiftForm.reason}
+      onChange={(e)=>
+        setShiftForm({
+          ...shiftForm,
+          reason:e.target.value
+        })
+      }
+      className="w-full border p-3 rounded mb-4"
+    />
+
+    <div className="flex gap-3">
+
+      <button
+        onClick={() =>
+          setShowShiftForm(false)
+        }
+        className="px-4 py-2 border rounded"
+      >
+        Cancel
+      </button>
+
+      <button
+        onClick={submitShiftRequest}
+        className="px-4 py-2 bg-blue-600 text-white rounded"
+      >
+        Submit
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+)}
+{activeTab === "shift" && (
+
+<div className="space-y-6">
+
+  {/* Header */}
+  <div className="flex justify-between items-center">
+
+    <div>
+
+      <h2 className="text-2xl font-bold">
+        Shift Request
+      </h2>
+
+      <p className="text-gray-500">
+        Manage your shift change requests
+      </p>
+
+    </div>
+
+    <button
+      onClick={() =>
+        setShowShiftForm(true)
+      }
+      className="
+        bg-gray-600
+        hover:bg-gray-700
+        text-white
+        px-5
+        py-3
+        rounded-lg
+      "
+    >
+      + Apply Shift
+    </button>
+
+  </div>
+
+  {/* Tabs */}
+
+  <div className="flex gap-3">
+
+    <button
+      onClick={() =>
+        setShiftTab("my")
+      }
+      className={`
+        px-6 py-3 rounded-lg
+        ${
+          shiftTab === "my"
+          ? "border-2 border-black bg-white"
+          : "bg-gray-100"
+        }
+      `}
+    >
+      My Requests
+    </button>
+
+    <button
+      onClick={() =>
+        setShiftTab("approval")
+      }
+      className={`
+        px-6 py-3 rounded-lg
+        ${
+          shiftTab === "approval"
+          ? "border-2 border-black bg-white"
+          : "bg-gray-100"
+        }
+      `}
+    >
+      Approval Requests
+    </button>
+
+  </div>
+
+  {/* Current Shift */}
+
+  <div className="bg-white rounded-xl shadow p-6">
+
+    <h3 className="text-lg font-semibold">
+      Current Shift
+    </h3>
+
+    <p className="text-gray-500 mt-2">
+      {currentEmployee?.shift_timing ||
+        "General Shift"}
+    </p>
+
+  </div>
+
+  {/* My Requests */}
+
+  {shiftTab === "my" && (
+
+    <div className="bg-white rounded-xl shadow p-6">
+
+      <h3 className="font-semibold mb-4">
+        My Shift Requests
+      </h3>
+
+      <table className="w-full">
+
+        <thead>
+
+          <tr className="border-b">
+
+            <th className="text-left p-3">
+              Current Shift
+            </th>
+
+            <th className="text-left p-3">
+              Requested Shift
+            </th>
+
+            <th className="text-left p-3">
+              Reason
+            </th>
+
+            <th className="text-left p-3">
+              Status
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          {Array.isArray(shiftRequests) &&
+            shiftRequests.map((item: any) => (
+
+              <tr
+                key={item.id}
+                className="border-b"
+              >
+
+                <td className="p-3">
+                  General shift
+                </td>
+
+                <td className="p-3">
+                  {item.requested_shift}
+                </td>
+
+                <td className="p-3">
+                  {item.reason}
+                </td>
+
+                <td className="p-3">
+
+                  <span
+                    className={`
+                    px-3 py-1 rounded-full text-sm
+                    ${
+                      item.status === "Approved"
+                        ? "bg-green-100 text-green-700"
+                        : item.status === "Rejected"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-yellow-100 text-yellow-700"
+                    }
+                  `}
+                  >
+                    {item.status}
+                  </span>
+
+                </td>
+
+              </tr>
+
+            ))}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  )}
+
+  {/* Approval Requests */}
+
+  {shiftTab === "approval" && (
+
+    <div className="bg-white rounded-xl shadow p-6">
+
+      <h3 className="font-semibold mb-4">
+        Shift Approval Requests
+      </h3>
+
+      <table className="w-full">
+
+        <thead>
+
+          <tr className="border-b">
+
+            <th className="text-left p-3">
+              Employee
+            </th>
+
+            <th className="text-left p-3">
+              Current Shift
+            </th>
+
+            <th className="text-left p-3">
+              Requested Shift
+            </th>
+
+            <th className="text-left p-3">
+              Reason
+            </th>
+
+            <th className="text-left p-3">
+              Action
+            </th>
+
+          </tr>
+
+        </thead>
+<tbody>
+
+{Array.isArray(managerShiftRequests) &&
+ managerShiftRequests
+   .filter(
+      (item:any) =>
+      item.status === "Pending"
+   )
+   .map((item:any) => (
+
+<tr
+  key={item.id}
+  className="border-b"
+>
+
+<td className="p-3">
+  {item.employee_name}
+</td>
+
+<td className="p-3">
+  {item.current_shift}
+</td>
+
+<td className="p-3">
+  {item.requested_shift}
+</td>
+
+<td className="p-3">
+  {item.reason}
+</td>
+
+<td className="p-3 flex gap-2">
+
+<button
+  onClick={() =>
+    approveShift(item.id)
+  }
+  className="
+  bg-green-600
+  text-white
+  px-3 py-1
+  rounded
+  "
+>
+Approve
+</button>
+
+<button
+  onClick={() =>
+    rejectShift(item.id)
+  }
+  className="
+  bg-red-600
+  text-white
+  px-3 py-1
+  rounded
+  "
+>
+Reject
+</button>
+
+</td>
+
+</tr>
+
+))}
+
+</tbody>
+
+      </table>
+
+    </div>
+
+  )}
+
+</div>
+
+)}
 
           {/* Leave Requests Tab */}
           {activeTab === 'leave' && (
@@ -3344,6 +4240,9 @@ const sendBirthdayWish = async (emp: any) => {
         </motion.div>
       </main>
     </div>
+    </div>
+    </>
+    
   );
 };
 
