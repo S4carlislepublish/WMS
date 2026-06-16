@@ -38,6 +38,7 @@ from routes.leaves import leave_bp
 from routes.communications import communication_bp
 from models.shift_request import ShiftRequest
 from routes.shift_request import shift_bp
+from routes.employee_details import employee_details_bp
 from routes.notifications import (
     notification_bp
 )
@@ -81,6 +82,10 @@ def create_app():
     app.register_blueprint(
     shift_bp,
     url_prefix="/api/shifts"
+)
+    app.register_blueprint(
+    employee_details_bp,
+    url_prefix="/api"
 )
 
 

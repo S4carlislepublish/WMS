@@ -91,8 +91,19 @@ def get_employees():
 
     employees = Employee.query.all()
 
-    return jsonify([
-        {
+    today = date.today()
+
+    result = []
+
+    for emp in employees:
+
+        attendance = Attendance.query.filter_by(
+            user_id=emp.user_id,
+            attendance_date=today
+        ).first()
+
+        result.append({
+
             "id": emp.id,
             "user_id": emp.user_id,
             "employee_id": emp.employee_id,
@@ -104,19 +115,34 @@ def get_employees():
 
             "department": emp.department,
             "designation": emp.designation,
+
             "role": emp.role,
-            "salary": emp.salary,
 
+            "reporting_manager":
+                emp.reporting_manager,
 
-            "reporting_manager": emp.reporting_manager,
+            "shift_timing":
+                emp.shift_timing,
 
-            # Leave Balance
-            "sick_leave": emp.sick_leave,
-            "casual_leave": emp.casual_leave,
-            "earned_leave": emp.earned_leave
-        }
-        for emp in employees
-    ])
+            "status":
+                attendance.status
+                if attendance
+                else "Absent",
+
+            "salary":
+                emp.salary,
+
+            "sick_leave":
+                emp.sick_leave,
+
+            "casual_leave":
+                emp.casual_leave,
+
+            "earned_leave":
+                emp.earned_leave
+        })
+
+    return jsonify(result)
 
 # ======================================
 # GET SINGLE EMPLOYEE
@@ -705,6 +731,7 @@ def get_my_team(user_id):
 
     return jsonify(result)
 
+
 @employees_bp.route(
     "/reporting-employees/<int:user_id>",
     methods=["GET"]
@@ -743,14 +770,6 @@ def get_reporting_employees(user_id):
                 employee.reporting_manager
                 .strip()
                 .lower()
-            )
-
-            print(
-                "Employee:",
-                employee.first_name,
-                employee.last_name,
-                "Manager:",
-                employee_manager
             )
 
             if employee_manager != manager_name:
@@ -796,8 +815,24 @@ def get_reporting_employees(user_id):
 
                 "working_hours":
                     attendance.total_hours
-                    if attendance
+                    if attendance and attendance.total_hours
+                    else 0,
+
+                "lunch_minutes":
+                    attendance.lunch_minutes
+                    if attendance and attendance.lunch_minutes
+                    else 0,
+
+                "tea_minutes":
+                    attendance.tea_minutes
+                    if attendance and attendance.tea_minutes
+                    else 0,
+
+                "total_break_minutes":
+                    attendance.total_break_minutes
+                    if attendance and attendance.total_break_minutes
                     else 0
+
             })
 
         print(

@@ -230,7 +230,7 @@ useEffect(() => {
 
       setAttendanceSummaryModal(true);
 
-    }, 2000);
+    }, 5000);
 
   } else {
 
@@ -1218,7 +1218,21 @@ useEffect(() => {
 }, [reportingEmployees]);
 
 
+const viewAttendance = async (employeeId) => {
+  try {
+    const response = await fetch(
+      `http://10.1.8.103:5000/api/attendance/details/${employeeId}`
+    );
 
+    const data = await response.json();
+
+    setSelectedEmployee(data);
+    setShowAttendanceModal(true);
+
+  } catch (error) {
+    console.error(error);
+  }
+};
 
 
 
@@ -1229,133 +1243,111 @@ useEffect(() => {
       {
 showAttendanceModal &&
 selectedEmployee && (
-
-<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[9999]">
-
-  <div className="bg-white rounded-2xl w-[650px] shadow-xl">
-
-    <div className="bg-gray-800 text-white p-5 flex justify-between items-center rounded-t-2xl">
-
-      <h2 className="text-xl font-semibold">
-        Attendance Details
-      </h2>
-
+<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+  <div className="bg-white rounded-xl w-[600px] shadow-2xl overflow-hidden">
+    
+    {/* Header */}
+    <div className="bg-gradient-to-r from-gray-800 to-gray-700 text-white p-4 flex justify-between items-center">
+      <h2 className="text-lg font-semibold">Attendance Details</h2>
       <button
-        onClick={() =>
-          setShowAttendanceModal(false)
-        }
+        onClick={() => setShowAttendanceModal(false)}
+        className="text-white hover:bg-gray-700 rounded-lg p-1 transition"
       >
         ✕
       </button>
-
     </div>
 
-    <div className="p-6 space-y-4">
-
-      <div>
-        <h3 className="font-semibold text-lg">
+    {/* Content */}
+    <div className="p-5 space-y-4">
+      
+      {/* Employee Info */}
+      <div className="border-b border-gray-200 pb-4">
+        <h3 className="font-semibold text-base text-gray-800">
           {selectedEmployee.employee_name}
         </h3>
-
-        <p className="text-gray-500">
+        <p className="text-gray-500 text-sm mt-1">
           {selectedEmployee.designation}
         </p>
       </div>
 
+      {/* Attendance Details Grid */}
       <div className="grid grid-cols-2 gap-4">
-
-        <div>
-          <label className="text-gray-500">
+        
+        <div className="bg-gray-50 p-3 rounded-lg">
+          <label className="text-gray-500 text-xs font-semibold uppercase">
             Check In
           </label>
-
-          <p>
+          <p className="text-gray-800 font-semibold text-sm mt-1">
             {selectedEmployee.check_in}
           </p>
         </div>
 
-        <div>
-          <label className="text-gray-500">
+        <div className="bg-gray-50 p-3 rounded-lg">
+          <label className="text-gray-500 text-xs font-semibold uppercase">
             Check Out
           </label>
-
-          <p>
+          <p className="text-gray-800 font-semibold text-sm mt-1">
             {selectedEmployee.check_out}
           </p>
         </div>
 
-        <div>
-          <label className="text-gray-500">
+        <div className="bg-gray-50 p-3 rounded-lg">
+          <label className="text-gray-500 text-xs font-semibold uppercase">
             Lunch Break
           </label>
-
-          <p>
+          <p className="text-gray-800 font-semibold text-sm mt-1">
             {selectedEmployee.lunch_minutes} min
           </p>
         </div>
 
-        <div>
-          <label className="text-gray-500">
+        <div className="bg-gray-50 p-3 rounded-lg">
+          <label className="text-gray-500 text-xs font-semibold uppercase">
             Tea Break
           </label>
-
-          <p>
+          <p className="text-gray-800 font-semibold text-sm mt-1">
             {selectedEmployee.tea_minutes} min
           </p>
         </div>
 
-        <div>
-          <label className="text-gray-500">
+        <div className="bg-gray-50 p-3 rounded-lg">
+          <label className="text-gray-500 text-xs font-semibold uppercase">
             Total Break
           </label>
-
-          <p>
+          <p className="text-gray-800 font-semibold text-sm mt-1">
             {selectedEmployee.total_break_minutes} min
           </p>
         </div>
 
-        <div>
-          <label className="text-gray-500">
+        <div className="bg-gray-50 p-3 rounded-lg">
+          <label className="text-gray-500 text-xs font-semibold uppercase">
             Working Hours
           </label>
-
-          <p>
-            {selectedEmployee.total_hours}
+          <p className="text-gray-800 font-semibold text-sm mt-1">
+            {selectedEmployee.working_hours || "-"}
           </p>
         </div>
 
       </div>
 
-      <div className="flex justify-end gap-3 pt-4">
-
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
         <button
-          className="bg-green-600 text-white px-5 py-2 rounded-lg"
-          onClick={() =>
-            approveAttendance(
-              selectedEmployee.employee_id
-            )
-          }
+          className="bg-gradient-to-r from-green-600 to-green-500 text-white px-5 py-2 rounded-lg font-semibold text-sm hover:from-green-700 hover:to-green-600 transition shadow-md"
+          onClick={() => approveAttendance(selectedEmployee.employee_id)}
         >
           Approve
         </button>
-
         <button
-          className="bg-red-600 text-white px-5 py-2 rounded-lg"
-          onClick={() =>
-            rejectAttendance(
-              selectedEmployee.employee_id
-            )
-          }
+          className="bg-gradient-to-r from-red-600 to-red-500 text-white px-5 py-2 rounded-lg font-semibold text-sm hover:from-red-700 hover:to-red-600 transition shadow-md"
+          onClick={() => rejectAttendance(selectedEmployee.employee_id)}
         >
           Reject
         </button>
-
       </div>
 
     </div>
 
   </div>
-
 </div>
 
 )}
@@ -1545,46 +1537,71 @@ selectedEmployee && (
 
       {birthdayModal && birthdayEmployees.length > 0 && (
   <div className="fixed top-5 right-5 z-[9999] w-[380px]">
-    {isMyBirthday ? (
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-gray-800 to-gray-600 px-5 py-4 flex justify-between items-center">
-          <h2 className="text-white font-semibold text-base">
-            🎂 Happy Birthday
-          </h2>
+    {isMyBirthday ? (<div className="bg-white rounded-2xl shadow-2xl overflow-hidden w-[700px] max-w-full">
 
-          <button
-            onClick={() => setBirthdayModal(false)}
-            className="text-white text-xl leading-none hover:opacity-80 transition-opacity"
-          >
-            ✕
-          </button>
-        </div>
+  {/* Header */}
+  <div className="relative bg-gradient-to-r from-sky-100 via-blue-50 to-sky-100 min-h-[500px] overflow-hidden">
 
-        <div className="p-5 text-center">
-          <img
-            src={`http://10.1.8.103:5000/api/employees/image/${currentEmployee?.id}`}
-            alt="Birthday"
-            className="w-24 h-24 rounded-full object-cover border-4 border-gray-200 mx-auto shadow-md"
-            onError={(e) => {
-              e.currentTarget.src =
-                "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-            }}
-          />
+    {/* Decorations */}
+    <div className="absolute top-6 left-8 text-4xl">🎈</div>
+    <div className="absolute top-10 right-12 text-5xl">🎉</div>
+    <div className="absolute bottom-10 left-10 text-5xl">🎊</div>
+    <div className="absolute bottom-16 right-16 text-4xl">🎁</div>
+    <div className="absolute top-24 right-32 text-3xl">⭐</div>
+    <div className="absolute bottom-32 left-32 text-3xl">✨</div>
 
-          <h3 className="mt-4 text-lg font-semibold text-gray-800">
-            {user?.full_name}
-          </h3>
+    {/* Close Button */}
+    <button
+      onClick={() => setBirthdayModal(false)}
+      className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white shadow-md hover:bg-gray-100 z-20"
+    >
+      ✕
+    </button>
 
-          <p className="mt-2 text-sm text-gray-600 leading-6">
-            Wishing you happiness, success, and prosperity.
-          </p>
+    {/* Content */}
+    <div className="relative z-10 flex flex-col items-center justify-center px-8 py-12 text-center">
 
-          <div className="mt-4 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700">
-            🎉 Have a wonderful year ahead!
-          </div>
-        </div>
+      <img
+        src={`http://10.1.8.103:5000/api/employees/image/${currentEmployee?.id}`}
+        alt="Birthday"
+        className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-xl"
+        onError={(e) => {
+          e.currentTarget.src =
+            "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+        }}
+      />
+
+      <h3 className="mt-8 text-4xl font-light text-blue-900">
+        Happy
+      </h3>
+
+      <h1 className="text-7xl font-extrabold text-blue-800 tracking-wide">
+        Birthday
+      </h1>
+
+      <p className="mt-6 text-2xl font-semibold text-gray-800">
+        {user?.full_name}
+      </p>
+
+      <p className="mt-4 text-lg text-gray-700">
+        You Are The Most Amazing
+      </p>
+
+      <p className="mt-3 text-sm text-gray-600 max-w-lg leading-6">
+        We hope you always stay happy and all your dreams
+        come true. Wishing you success, prosperity,
+        good health and happiness throughout the year.
+      </p>
+
+      <div className="mt-8 bg-white shadow-lg rounded-full px-8 py-3 border">
+        🎂 Have A Wonderful Birthday 🎂
       </div>
-    ) : (
+
+    </div>
+
+  </div>
+
+</div>) : (
       <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="bg-gradient-to-r from-gray-800 to-gray-600 px-5 py-4 flex justify-between items-center">
           <h2 className="text-white font-semibold text-base">
@@ -1801,6 +1818,9 @@ selectedEmployee && (
                     <button
                       className="px-3 py-1.5 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-900 transition-colors"
                       onClick={() => {
+                          console.log(emp);
+
+                          console.log("Employee Data:", emp);
   setSelectedEmployee(emp);
   setShowAttendanceModal(true);
 }}

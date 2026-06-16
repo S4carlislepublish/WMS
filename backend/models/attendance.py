@@ -97,3 +97,7 @@ class Attendance(db.Model):
     db.String(20),
     default="Absent"
 )
+    shift_timing = db.Column(
+    db.String(50),
+    default="General Shift"
+)

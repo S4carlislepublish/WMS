@@ -5,6 +5,7 @@ from flask import request
 from flask import jsonify
 
 from datetime import datetime
+from models.attendance import Attendance
 
 from models.database import db
 from models.shift_request import ShiftRequest
@@ -29,26 +30,21 @@ def apply_shift():
 
         data = request.json
 
+
         shift_request = ShiftRequest(
+     employee_id=data["employee_id"],
+    employee_name=data["employee_name"],
+    current_shift=data["current_shift"],
+    requested_shift=data["requested_shift"],
 
-            employee_id=
-            data["employee_id"],
+    shift_date=datetime.strptime(
+        data["shift_date"],
+        "%Y-%m-%d"
+    ).date(),
 
-            employee_name=
-            data["employee_name"],
-
-            current_shift=
-            data["current_shift"],
-
-            requested_shift=
-            data["requested_shift"],
-
-            reason=
-            data["reason"],
-
-            reporting_manager=
-            data["reporting_manager"]
-        )
+    reason=data["reason"],
+    reporting_manager=data["reporting_manager"]
+)
 
         db.session.add(
             shift_request
@@ -157,25 +153,30 @@ def approve_shift(id):
 
             return jsonify({
                 "success": False,
-                "message":
-                "Shift Request Not Found"
+                "message": "Shift Request Not Found"
             }), 404
 
-        employee = Employee.query.filter_by(
-            user_id=shift.employee_id
+        attendance = Attendance.query.filter_by(
+            user_id=shift.employee_id,
+            attendance_date=shift.shift_date
         ).first()
 
-        if not employee:
+        if attendance:
 
-            return jsonify({
-                "success": False,
-                "message":
-                "Employee Not Found"
-            }), 404
+            attendance.shift_timing = (
+                shift.requested_shift
+            )
 
-        employee.shift_timing = (
-            shift.requested_shift
-        )
+        else:
+
+            attendance = Attendance(
+                user_id=shift.employee_id,
+                attendance_date=shift.shift_date,
+                shift_timing=shift.requested_shift,
+                status="Absent"
+            )
+
+            db.session.add(attendance)
 
         shift.status = "Approved"
 
@@ -187,8 +188,7 @@ def approve_shift(id):
 
         return jsonify({
             "success": True,
-            "message":
-            "Shift Approved Successfully"
+            "message": "Shift Approved Successfully"
         })
 
     except Exception as e:
@@ -199,7 +199,6 @@ def approve_shift(id):
             "success": False,
             "message": str(e)
         }), 500
-
 
 # ==========================================
 # REJECT SHIFT REQUEST

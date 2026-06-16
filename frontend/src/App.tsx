@@ -26,10 +26,10 @@ import QAPage from './pages/QAPage';
 import ScheduleReport from "./Reports/ScheduleReport"
 import TodaySchedule  from "./Reports/TodaySchedule"
 import ProjectSchedule   from "./Reports/ProjectSchedule"
-import  HrmsModule  from "./pages/HRManagePage";
+import  HrmsModule  from "./pages/hr/HRAdminDashboard";
 import CalendarPage from "./pages/Calendarpage"
 import ManagerDashboardPage from './pages/ManagerDashboardPage';
-import EmployeeDashboardPage from './pages/EmployeeDashboardPage';
+import EmployeeDashboardPage from './pages/employee/EmployeeDashboardPage';
 import Editorpage from './pages/EditorPage';
 import CompleteProfile from './pages/Compeleteprofilepage';
 import PayrollDashboardPage from './pages/PayrollDashboardPage';
