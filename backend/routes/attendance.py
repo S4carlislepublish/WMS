@@ -1239,7 +1239,7 @@ def export_paysheet():
             bottom=Side(style="thin")
         )
 
-        ws.merge_cells("A1:AF1")
+        ws.merge_cells("A1:BE1")
 
         ws["A1"] = "PAYSHEET REPORT"
 
@@ -1253,65 +1253,84 @@ def export_paysheet():
         )
 
         headers = [
+    "S.No",
+    "EMP NO",
+    "Gender",
+    "PF No",
+    "UAN No",
+    "ESI No",
+    "Employee Name",
+    "Department",
+    "Designation",
+    "Mail ID",
+    "DOJ",
+    "No Of Days In Month",
+    "Days Payable",
+    "Basic",
+    "HRA",
+    "LTA",
+    "Other Allowance",
+    "Gross Salary",
 
-            "S.No",
-            "EMP NO",
-            "Gender",
-            "PF No",
-            "UAN No",
-            "ESI No",
+    "Earned Basic",
+    "Earned HRA",
+    "Earned LTA",
+    "Earned Other Allowance",
+    "Earned Actual Gross",
 
-            "Employee Name",
+    "Attendance Bonus",
+    "ODW",
+    "Total",
 
-            "Department",
-            "Designation",
+    "Internet Charges",
 
-            "Mail ID",
+    "Gross Earned Salary",
+    "Earned PF Wages",
 
-            "DOJ",
+    "PF Ded Employee",
+    "PF Ded Employer",
 
-            "No Of Days In Month",
+    "VPF",
 
-            "Days Payable",
+    "PF & VPF Ded Employee",
 
-            "Basic",
+    "ESI Ded Employee",
+    "ESI Ded Employer",
 
-            "HRA",
+    "Salary Advance",
 
-            "LTA",
+    "TDS",
+    "LWF",
+    "PT",
 
-            "Other Allowance",
+    "Other Deduction",
 
-            "Gross Salary",
+    "Total Deduction",
 
-            "Actual Month CTC",
+    "Net Transfer",
 
-            "Earned Month CTC",
+    "Account No",
+    "IFSC Code",
+    "Branch Code",
 
-            "PF Deduction",
+    "PF Wage",
+    "PF",
 
-            "ESI Deduction",
+    "EPS Wage",
 
-            "TDS",
+    "8.33 %",
+    "3.67 %",
+    "0.50 %",
+    "0.50 % Employer",
+    "0.01 %",
 
-            "PT",
+    "Bonus",
 
-            "LWF",
+    "Actual Month CTC",
+    "Earned Month CTC",
 
-            "Bonus",
-
-            "Internet Charges",
-
-            "Salary Advance",
-
-            "Account Number",
-
-            "IFSC Code",
-
-            "Net Transfer",
-
-            "Remarks"
-        ]
+    "Remarks"
+]
 
         for col_num, header in enumerate(
             headers,
@@ -1410,71 +1429,89 @@ def export_paysheet():
             )
 
             data = [
+    index,
+    employee.employee_id,
+    employee.gender,
+    employee.pf_number,
+    employee.uan_number,
+    employee.esi_number,
 
-                index,
+    f"{employee.first_name} {employee.last_name}",
 
-                employee.employee_id,
+    employee.department,
+    employee.designation,
+    employee.email,
+    str(employee.joining_date),
 
-                employee.gender,
+    total_days_cycle,
+    days_payable,
 
-                employee.pf_number,
+    salary,
+    hra,
+    lta,
+    other_allowance,
+    salary,
 
-                employee.uan_number,
+    "",  # Earned Basic
+    "",  # Earned HRA
+    "",  # Earned LTA
+    "",  # Earned Other Allowance
+    "",  # Earned Actual Gross
 
-                employee.esi_number,
+    "",  # Attendance Bonus
+    "",  # ODW
+    "",  # Total
 
-                f"{employee.first_name} {employee.last_name}",
+    internet_charges,
 
-                employee.department,
+    earned_ctc,
 
-                employee.designation,
+    "",  # Earned PF Wages
 
-                employee.email,
+    pf_deduction,
+    "",  # PF Ded Employer
 
-                str(employee.joining_date),
+    "",  # VPF
 
-                total_days_cycle,
+    "",  # PF & VPF Ded Employee
 
-                days_payable,
+    esi_deduction,
+    "",  # ESI Ded Employer
 
-                salary,
+    salary_advance,
 
-                hra,
+    tds,
+    lwf,
+    pt,
 
-                lta,
+    "",  # Other Deduction
 
-                other_allowance,
+    "",  # Total Deduction
 
-                salary,
+    net_transfer,
 
-                actual_ctc,
+    employee.account_number,
+    employee.ifsc_code,
+    "",  # Branch Code
 
-                earned_ctc,
+    "",  # PF Wage
+    "",  # PF
 
-                pf_deduction,
+    "",  # EPS Wage
 
-                esi_deduction,
+    "",  # 8.33%
+    "",  # 3.67%
+    "",  # 0.50%
+    "",  # 0.50% Employer
+    "",  # 0.01%
 
-                tds,
+    bonus,
 
-                pt,
+    actual_ctc,
+    earned_ctc,
 
-                lwf,
-
-                bonus,
-
-                internet_charges,
-
-                salary_advance,
-
-                employee.account_number,
-
-                employee.ifsc_code,
-
-                net_transfer,
-
-                ""
-            ]
+    ""
+]
 
             for col_num, value in enumerate(
                 data,

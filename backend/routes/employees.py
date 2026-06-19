@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from models.attendance import Attendance
 from models.user import Role, Team
 from services.leave_balance_service import update_leave_balance
+from models.leave import LeaveRequest
 
 employees_bp = Blueprint("employees", __name__)
 
@@ -935,3 +936,214 @@ def get_employee_profile(user_id):
             "reporting_manager": employee.reporting_manager
         }
     })
+
+@employees_bp.route(
+    "/employee-details/<int:employee_id>",
+    methods=["GET"]
+)
+def get_employee_details(employee_id):
+
+    try:
+
+        employee = Employee.query.get(employee_id)
+
+        if not employee:
+            return jsonify({
+                "success": False,
+                "message": "Employee not found"
+            }), 404
+
+        # Payroll Cycle
+        today = date.today()
+
+        if today.day >= 25:
+
+            start_date = date(
+                today.year,
+                today.month,
+                25
+            )
+
+            if today.month == 12:
+
+                end_date = date(
+                    today.year + 1,
+                    1,
+                    24
+                )
+
+            else:
+
+                end_date = date(
+                    today.year,
+                    today.month + 1,
+                    24
+                )
+
+        else:
+
+            if today.month == 1:
+
+                start_date = date(
+                    today.year - 1,
+                    12,
+                    25
+                )
+
+            else:
+
+                start_date = date(
+                    today.year,
+                    today.month - 1,
+                    25
+                )
+
+            end_date = date(
+                today.year,
+                today.month,
+                24
+            )
+
+        attendance_records = Attendance.query.filter(
+            Attendance.user_id == employee.user_id,
+            Attendance.attendance_date >= start_date,
+            Attendance.attendance_date <= end_date
+        ).all()
+
+        present_days = len([
+            a for a in attendance_records
+            if a.status == "Present"
+        ])
+
+        absent_days = len([
+            a for a in attendance_records
+            if a.status == "Absent"
+        ])
+
+        absent_dates = [
+            str(a.attendance_date)
+            for a in attendance_records
+            if a.status == "Absent"
+        ]
+
+        leave_requests = LeaveRequest.query.filter(
+            LeaveRequest.employee_id == str(employee.id),
+            LeaveRequest.status == "Approved",
+            LeaveRequest.from_date >= start_date,
+            LeaveRequest.to_date <= end_date
+        ).all()
+
+        total_leave_days = sum(
+            leave.total_days or 0
+            for leave in leave_requests
+        )
+
+        leave_history = []
+
+        for leave in leave_requests:
+
+            leave_history.append({
+                "leave_type": leave.leave_type,
+                "from_date": str(leave.from_date),
+                "to_date": str(leave.to_date),
+                "total_days": leave.total_days,
+                "status": leave.status,
+                "reason": leave.reason
+            })
+
+        return jsonify({
+            "success": True,
+            "employee": {
+
+                "id": employee.id,
+
+                "employee_id":
+                    employee.employee_id,
+
+                "name":
+                    f"{employee.first_name} {employee.last_name}",
+
+                "email":
+                    employee.email,
+
+                "phone":
+                    employee.phone,
+
+                "department":
+                    employee.department,
+
+                "designation":
+                    employee.designation,
+
+                "reporting_manager":
+                    employee.reporting_manager,
+
+                "salary":
+                    employee.salary,
+
+                "shift_timing":
+                    employee.shift_timing,
+
+                "joining_date":
+                    str(employee.joining_date),
+
+                "present_days":
+                    present_days,
+
+                "leave_days":
+                    total_leave_days,
+
+                "absent_days":
+                    absent_days,
+
+                "absent_dates":
+                    absent_dates,
+
+                "sick_leave":
+                    employee.sick_leave,
+
+                "casual_leave":
+                    employee.casual_leave,
+
+                "earned_leave":
+                    employee.earned_leave,
+
+                "attendance_history": [
+                    {
+                        "date":
+                            str(att.attendance_date),
+
+                        "status":
+                            att.status,
+
+                        "check_in":
+                            att.check_in.strftime(
+                                "%I:%M %p"
+                            )
+                            if att.check_in
+                            else None,
+
+                        "check_out":
+                            att.check_out.strftime(
+                                "%I:%M %p"
+                            )
+                            if att.check_out
+                            else None,
+
+                        "working_hours":
+                            att.total_hours
+                    }
+                    for att in attendance_records
+                ],
+
+                "leave_history":
+                    leave_history
+            }
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500

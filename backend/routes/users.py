@@ -337,3 +337,28 @@ def get_roles_by_team(team_id):
             "error": str(e)
         }), 500
     
+@users_bp.route(
+    "/search",
+    methods=["GET"]
+)
+def search_users():
+
+    query = request.args.get(
+        "q",
+        ""
+    )
+
+    users = User.query.filter(
+        User.first_name.ilike(
+            f"%{query}%"
+        )
+    ).all()
+
+    return jsonify([
+        {
+            "id": user.id,
+            "name": user.first_name,
+            "email": user.company_email
+        }
+        for user in users
+    ])

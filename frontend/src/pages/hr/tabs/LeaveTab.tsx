@@ -34,13 +34,13 @@ const LeaveTab: React.FC<LeaveTabProps> = ({
 
 
   const downloadLeaveReport = () => {
-
-  window.open(
-    `${BASE_URL}/leaves/export-leave-report`,
-    "_blank"
+    
+  window.location.assign(
+    `${BASE_URL}/leaves/export-leave-report`
   );
-
 };
+
+
 
   return (
     <Panel>

@@ -21,6 +21,8 @@ from services.checkin_monitor import (
     check_missed_checkins
 )
 
+from extensions import socketio
+
 
 load_dotenv()
 
@@ -46,10 +48,10 @@ from routes.notifications import (
 
 def create_app():
     app = Flask(__name__)
-    socketio = SocketIO(
-    app,
-    cors_allowed_origins="*"
-)
+
+    socketio.init_app(app)
+
+
     CORS(
     app,
     resources={r"/api/*": {"origins": "*"}},

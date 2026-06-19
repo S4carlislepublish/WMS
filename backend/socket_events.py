@@ -45,6 +45,33 @@ def register_socket_events(socketio):
         f"Manager {manager_name} joined room"
     )
 
+
+# =====================================
+# JOIN EMPLOYEES ROOM
+# =====================================
+
+  @socketio.on("join_employee")
+  def join_employee(data):
+
+    join_room("employees")
+
+    print(
+        "Employee joined employees room"
+    )
+
+
+# =====================================
+# JOIN MANAGERS ROOM
+# =====================================
+
+  @socketio.on("join_managers")
+  def join_managers(data):
+
+    join_room("managers")
+
+    print(
+        "Manager joined managers room"
+    )
 # =====================================
 # SEND PRIVATE MESSAGE
 # =====================================
@@ -195,5 +222,95 @@ def register_socket_events(socketio):
             {
                 "error":
                     str(e)
+            }
+        )
+# =====================================
+# HR / ADMIN BROADCAST MESSAGE
+# =====================================
+
+  # =====================================
+# HR / ADMIN ANNOUNCEMENT
+# =====================================
+
+  @socketio.on("send_announcement")
+  def send_announcement(data):
+
+    try:
+
+        sender_name = data.get(
+            "sender_name"
+        )
+
+        title = data.get(
+            "title"
+        )
+
+        target_role = data.get(
+            "target_role"
+        )
+
+        message_text = data.get(
+            "message"
+        )
+
+        communication = Communication(
+
+            employee_id=None,
+
+            receiver_id=None,
+
+            employee_name=sender_name,
+
+            message_type="announcement",
+
+            title=title,
+
+            target_role=target_role,
+
+            message=message_text,
+
+            created_by=sender_name
+        )
+
+        db.session.add(
+            communication
+        )
+
+        db.session.commit()
+
+        response = communication.to_dict()
+
+        if target_role == "employee":
+
+            emit(
+                "receive_announcement",
+                response,
+                room="employees"
+            )
+
+        elif target_role == "manager":
+
+            emit(
+                "receive_announcement",
+                response,
+                room="managers"
+            )
+
+        else:
+
+            emit(
+                "receive_announcement",
+                response,
+                broadcast=True
+            )
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        emit(
+            "message_error",
+            {
+                "error": str(e)
             }
         )

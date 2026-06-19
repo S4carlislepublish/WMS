@@ -32,6 +32,7 @@ import ManagerDashboardPage from './pages/ManagerDashboardPage';
 import EmployeeDashboardPage from './pages/employee/EmployeeDashboardPage';
 import Editorpage from './pages/EditorPage';
 import CompleteProfile from './pages/Compeleteprofilepage';
+import AnnouncementsPage from './pages/AnnouncementsPage';
 
 
 
@@ -249,6 +250,16 @@ return ( <BrowserRouter>
     <ProtectedRoute>
       <EmployeeDashboardPage />
     </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/announcements"
+  element={
+    <ProtectedRoute>
+      <AnnouncementsPage />
+    </ProtectedRoute>
+    
   }
 />
 

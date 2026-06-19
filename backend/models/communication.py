@@ -10,13 +10,11 @@ class Communication(db.Model):
         primary_key=True
     )
 
-    # Sender
     employee_id = db.Column(
         db.Integer,
         nullable=True
     )
 
-    # Receiver
     receiver_id = db.Column(
         db.Integer,
         nullable=True
@@ -27,13 +25,27 @@ class Communication(db.Model):
         nullable=True
     )
 
+    # employee
+    # announcement
+    # birthday
     message_type = db.Column(
         db.String(50),
         nullable=False
     )
+
+    # NEW
+    title = db.Column(
+        db.String(255),
+        nullable=True
+    )
+
     # employee
-    # announcement
-    # birthday
+    # manager
+    # all
+    target_role = db.Column(
+        db.String(50),
+        nullable=True
+    )
 
     message = db.Column(
         db.Text,
@@ -51,12 +63,15 @@ class Communication(db.Model):
     )
 
     def to_dict(self):
+
         return {
             "id": self.id,
             "employee_id": self.employee_id,
             "receiver_id": self.receiver_id,
             "employee_name": self.employee_name,
             "message_type": self.message_type,
+            "title": self.title,
+            "target_role": self.target_role,
             "message": self.message,
             "created_by": self.created_by,
             "created_at": (

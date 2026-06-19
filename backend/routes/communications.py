@@ -3,7 +3,7 @@ from flask import request
 from flask import jsonify
 
 from sqlalchemy import or_
-
+from extensions import socketio
 from models.database import db
 from models.communication import Communication
 
@@ -60,6 +60,22 @@ def send_message():
         )
 
         db.session.commit()
+
+        socketio.emit(
+            "receive_office_message",
+            {
+                "id": communication.id,
+                "employee_id": communication.employee_id,
+                "receiver_id": communication.receiver_id,
+                "employee_name": communication.employee_name,
+                "message": communication.message,
+                "message_type": communication.message_type,
+                "created_by": communication.created_by,
+                "created_at": str(
+                    communication.created_at
+                )
+            }
+        )
 
         return jsonify({
             "success": True,
@@ -152,16 +168,20 @@ def get_announcements():
 
     try:
 
-        messages = Communication.query.filter_by(
+        announcements = Communication.query.filter_by(
             message_type="announcement"
         ).order_by(
             Communication.created_at.desc()
         ).all()
 
-        return jsonify([
-            msg.to_dict()
-            for msg in messages
-        ])
+        return jsonify({
+            "success": True,
+            "count": len(announcements),
+            "announcements": [
+                announcement.to_dict()
+                for announcement in announcements
+            ]
+        })
 
     except Exception as e:
 
@@ -210,6 +230,134 @@ def delete_message(
     except Exception as e:
 
         db.session.rollback()
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+    
+@communication_bp.route(
+    "/announcements",
+    methods=["POST"]
+)
+def create_announcement():
+
+    try:
+
+        data = request.json
+
+        announcement = Communication(
+
+            employee_id=None,
+
+            receiver_id=None,
+
+            employee_name="HR Admin",
+
+            message_type="announcement",
+
+            title=data.get("title"),
+
+            target_role=data.get("target_role"),
+
+            message=data.get("message"),
+
+            created_by=data.get("created_by")
+        )
+
+        db.session.add(
+            announcement
+        )
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Announcement Sent Successfully",
+            "announcement": announcement.to_dict()
+        }), 201
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+    
+@communication_bp.route(
+    "/conversations/<int:user_id>",
+    methods=["GET"]
+)
+def get_conversations(user_id):
+
+    messages = Communication.query.filter(
+        or_(
+            Communication.employee_id == user_id,
+            Communication.receiver_id == user_id
+        )
+    ).all()
+
+    users = {}
+
+    for msg in messages:
+
+        other_user = (
+            msg.receiver_id
+            if msg.employee_id == user_id
+            else msg.employee_id
+        )
+
+        users[other_user] = True
+
+    return jsonify(
+        list(users.keys())
+    )
+
+# ==========================================
+# CHAT BETWEEN TWO USERS
+# ==========================================
+
+@communication_bp.route(
+    "/chat/<int:user1>/<int:user2>",
+    methods=["GET"]
+)
+def get_chat_messages(
+    user1,
+    user2
+):
+
+    try:
+
+        messages = Communication.query.filter(
+
+            Communication.message_type == "employee",
+
+            or_(
+
+                db.and_(
+                    Communication.employee_id == user1,
+                    Communication.receiver_id == user2
+                ),
+
+                db.and_(
+                    Communication.employee_id == user2,
+                    Communication.receiver_id == user1
+                )
+
+            )
+
+        ).order_by(
+            Communication.created_at.asc()
+        ).all()
+
+        return jsonify([
+            msg.to_dict()
+            for msg in messages
+        ])
+
+    except Exception as e:
 
         return jsonify({
             "success": False,

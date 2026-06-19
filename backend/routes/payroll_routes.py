@@ -40,10 +40,30 @@ def payroll_summary():
                 LeaveRequest.status == "Approved"
             ).all()
 
+            leave_data = []
+
+            for leave in approved_leaves:
+                leave_data.append([
+                leave.leave_type,
+                str(leave.from_date),
+                str(leave.to_date),
+                leave.total_days
+            ])
+
             leave_days = sum(
                 leave.total_days or 0
                 for leave in approved_leaves
             )
+
+            current_month = date.today().month
+            current_year = date.today().year
+
+            attendance_days = Attendance.query.filter(
+                Attendance.user_id == employee.user_id,
+                Attendance.status == "Present",
+                db.extract("month", Attendance.attendance_date) == current_month,
+                db.extract("year", Attendance.attendance_date) == current_year
+            ).count()
 
             days_payable = max(
                 total_days - leave_days,
@@ -183,12 +203,24 @@ def download_payslip(employee_id):
                 "error": "Employee not found"
             }), 404
 
-        total_days = 31
+        import calendar
+
+        today = date.today()
+
+        total_days = calendar.monthrange(
+            today.year,
+            today.month
+        )[1]
 
         approved_leaves = LeaveRequest.query.filter(
             LeaveRequest.employee_id == str(employee.id),
             LeaveRequest.status == "Approved"
         ).all()
+
+        attendance_days = Attendance.query.filter(
+            Attendance.user_id == employee.user_id,
+            Attendance.status == "Present"
+        ).count()
 
         leave_days = sum(
             leave.total_days or 0
@@ -272,6 +304,16 @@ def download_payslip(employee_id):
             2
         )
 
+        leave_data = [
+            [
+                leave.leave_type,
+                str(leave.from_date),
+                str(leave.to_date),
+                str(leave.total_days or 0)
+            ]
+            for leave in approved_leaves
+        ]
+
         buffer = BytesIO()
 
         doc = SimpleDocTemplate(
@@ -300,8 +342,8 @@ def download_payslip(employee_id):
         elements.append(logo)
 
         elements.append(
-    Spacer(1, 10)
-)
+            Spacer(1, 10)
+        )
 
         elements.append(
             Paragraph(
@@ -339,13 +381,21 @@ def download_payslip(employee_id):
                     f"NAME: {employee.first_name} {employee.last_name}"
                 ],
                 [
-                    f"DEPARTMENT: {employee.department}",
-                    f"DESIGNATION: {employee.designation}"
-                ],
-                [
                     f"PF NO: {employee.pf_number or 'NA'}",
                     f"ESI NO: {employee.esi_number or 'NA'}"
                 ],
+                [
+                    f"DESIGNATION: {employee.designation}",
+                    f"PAYABLE DAYS: {days_payable}"
+                ],
+                [
+                    f"TOTAL DAYS: {total_days}",
+                    f"PRESENT DAYS: {attendance_days}"
+                ],
+                [
+    f"LEAVE DAYS: {leave_days}",
+    f"PHONE: {employee.phone or 'NA'}"
+],
                 [
                     f"DOJ: {employee.joining_date}",
                     f"BANK A/C: {employee.account_number or 'NA'}"
@@ -353,16 +403,20 @@ def download_payslip(employee_id):
                 [
                     f"UAN NO: {employee.uan_number or 'NA'}",
                     f"PAYABLE DAYS: {days_payable}"
-                ]
+                ],
+                [
+                    f"TOTAL DAYS: {total_days}",
+                    f"PRESENT DAYS: {attendance_days}"
+                ],
             ],
             colWidths=[260, 260]
         )
 
         employee_table.setStyle(
             TableStyle([
-                ("GRID",(0,0),(-1,-1),1,colors.black),
-                ("FONTNAME",(0,0),(-1,-1),"Helvetica-Bold"),
-                ("FONTSIZE",(0,0),(-1,-1),9)
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9)
             ])
         )
 
@@ -373,7 +427,7 @@ def download_payslip(employee_id):
         )
 
         actual_salary = Table([
-            ["ACTUAL SALARY",""],
+            ["ACTUAL SALARY", ""],
             ["Basic", basic],
             ["HRA", hra],
             ["LTA", lta],
@@ -382,7 +436,7 @@ def download_payslip(employee_id):
         ])
 
         earned_salary_table = Table([
-            ["EARNED SALARY",""],
+            ["EARNED SALARY", ""],
             ["Basic", earned_basic],
             ["HRA", earned_hra],
             ["LTA", earned_lta],
@@ -391,20 +445,20 @@ def download_payslip(employee_id):
         ])
 
         other_payment = Table([
-            ["OTHER PAYMENTS",""],
-            ["Arrears","0.00"],
-            ["Bonus","0.00"],
-            ["Att Bonus","0.00"],
-            ["Overtime","0.00"],
-            ["TOTAL","0.00"]
+            ["OTHER PAYMENTS", ""],
+            ["Arrears", "0.00"],
+            ["Bonus", "0.00"],
+            ["Att Bonus", "0.00"],
+            ["Overtime", "0.00"],
+            ["TOTAL", "0.00"]
         ])
 
         deductions = Table([
-            ["DEDUCTIONS",""],
+            ["DEDUCTIONS", ""],
             ["P.F", pf],
             ["E.S.I", esi],
-            ["Prof Tax","0.00"],
-            ["Other Ded","0.00"],
+            ["Prof Tax", "0.00"],
+            ["Other Ded", "0.00"],
             ["TOTAL", total_deduction]
         ])
 
@@ -417,10 +471,10 @@ def download_payslip(employee_id):
 
             tbl.setStyle(
                 TableStyle([
-                    ("GRID",(0,0),(-1,-1),1,colors.black),
-                    ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
-                    ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
-                    ("FONTSIZE",(0,0),(-1,-1),8)
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8)
                 ])
             )
 
@@ -428,12 +482,30 @@ def download_payslip(employee_id):
             [
                 [
                     actual_salary,
+                    "",
                     earned_salary_table,
+                    "",
                     other_payment,
+                    "",
                     deductions
                 ]
             ],
-            colWidths=[130,130,130,130]
+            colWidths=[
+                115,
+                15,
+                115,
+                15,
+                115,
+                15,
+                115
+            ]
+        )
+
+        salary_layout.setStyle(
+            TableStyle([
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 10)
+            ])
         )
 
         elements.append(
@@ -455,13 +527,58 @@ def download_payslip(employee_id):
 
         net_table.setStyle(
             TableStyle([
-                ("GRID",(0,0),(-1,-1),1,colors.black),
-                ("FONTNAME",(0,0),(-1,-1),"Helvetica-Bold"),
-                ("FONTSIZE",(0,0),(-1,-1),12)
+                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 12)
             ])
         )
 
         elements.append(net_table)
+
+        elements.append(
+            Spacer(1, 20)
+        )
+
+        elements.append(
+            Paragraph(
+                "<b>LEAVE DETAILS</b>",
+                styles["Heading3"]
+            )
+        )
+
+        if leave_data:
+
+            leave_table = Table(
+                [
+                    [
+                        "Leave Type",
+                        "From Date",
+                        "To Date",
+                        "Days"
+                    ]
+                ] + leave_data,
+                colWidths=[120, 120, 120, 80]
+            )
+
+            leave_table.setStyle(
+                TableStyle([
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8)
+                ])
+            )
+
+            elements.append(leave_table)
+
+        else:
+
+            elements.append(
+                Paragraph(
+                    "No Leave Records",
+                    styles["Normal"]
+                )
+            )
 
         elements.append(
             Spacer(1, 50)
@@ -474,7 +591,7 @@ def download_payslip(employee_id):
                     "SIGN OF EMPLOYER"
                 ]
             ],
-            colWidths=[260,260]
+            colWidths=[260, 260]
         )
 
         elements.append(sign_table)
@@ -486,7 +603,7 @@ def download_payslip(employee_id):
         return send_file(
             buffer,
             as_attachment=True,
-            download_name=f"{employee.employee_id}_Payslip.pdf",
+            download_name=f"{employee.first_name}_{employee.last_name}_Payslip.pdf",
             mimetype="application/pdf"
         )
 
