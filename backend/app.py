@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
+from routes.payroll_routes import payroll_bp
 import os
 from flask import send_from_directory
 from flask_socketio import (
@@ -86,6 +87,10 @@ def create_app():
     app.register_blueprint(
     employee_details_bp,
     url_prefix="/api"
+)
+    app.register_blueprint(
+    payroll_bp,
+    url_prefix="/api/payroll"
 )
 
 

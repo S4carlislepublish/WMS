@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { getStatusColor } from '../utils/employeeHelpers';
@@ -29,6 +29,53 @@ const LeaveTab: React.FC<LeaveTabProps> = ({
     totalDays: 0, reason: "", emergencyContact: "", reportingManager: "",
     handoverTo: "", attachment: null,
   });
+
+  useEffect(() => {
+
+  if (
+    leaveForm.fromDate &&
+    leaveForm.toDate
+  ) {
+
+    const fromDate =
+      new Date(leaveForm.fromDate);
+
+    const toDate =
+      new Date(leaveForm.toDate);
+
+    let totalDays =
+      Math.floor(
+        (
+          toDate.getTime() -
+          fromDate.getTime()
+        ) /
+        (1000 * 60 * 60 * 24)
+      ) + 1;
+
+    if (
+      leaveForm.leaveDuration === "First Half" ||
+      leaveForm.leaveDuration === "Second Half"
+    ) {
+
+      totalDays = 0.5;
+
+    }
+
+    setLeaveForm(prev => ({
+      ...prev,
+      totalDays:
+        totalDays > 0
+          ? totalDays
+          : 0
+    }));
+
+  }
+
+}, [
+  leaveForm.fromDate,
+  leaveForm.toDate,
+  leaveForm.leaveDuration
+]);
 
   const editLeave = (leave: any) => {
     setLeaveForm({
@@ -135,7 +182,6 @@ const LeaveTab: React.FC<LeaveTabProps> = ({
                         <option value="Sick Leave">Sick Leave</option>
                         <option value="Casual Leave">Casual Leave</option>
                         <option value="Earned Leave">Earned Leave</option>
-                        <option value="Unpaid Leave">Unpaid Leave</option>
                       </select>
                     </div>
 

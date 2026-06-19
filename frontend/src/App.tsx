@@ -32,7 +32,6 @@ import ManagerDashboardPage from './pages/ManagerDashboardPage';
 import EmployeeDashboardPage from './pages/employee/EmployeeDashboardPage';
 import Editorpage from './pages/EditorPage';
 import CompleteProfile from './pages/Compeleteprofilepage';
-import PayrollDashboardPage from './pages/PayrollDashboardPage';
 
 
 
@@ -289,14 +288,7 @@ return ( <BrowserRouter>
   }
 />
 
-<Route
-  path="/payroll"
-  element={
-    <ProtectedRoute>
-      <PayrollDashboardPage />
-    </ProtectedRoute>
-  }
-/>
+
 
     {/* 404 */}
 

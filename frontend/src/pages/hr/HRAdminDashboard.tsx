@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { apiService } from "../../services/api";
 import {
   HomeIcon, UserGroupIcon, ClockIcon, BuildingOfficeIcon,
-  CalendarDaysIcon, ChartBarIcon, DocumentTextIcon, Cog6ToothIcon, PlusIcon,
+  CalendarDaysIcon, ChartBarIcon, DocumentTextIcon, Cog6ToothIcon, PlusIcon,CurrencyDollarIcon 
 } from "@heroicons/react/24/outline";
 
 import Btn from "./components/Btn";
@@ -11,6 +11,7 @@ import DashboardTab from "./tabs/DashboardTab";
 import DirectoryTab from "./tabs/DirectoryTab";
 import AttendanceTab from "./tabs/AttendanceTab";
 import LeaveTab from "./tabs/LeaveTab";
+import PayrollPage from "./tabs/PayrollPage";
 import PerformanceTab from "./tabs/PerformanceTab";
 import DocumentsTab from "./tabs/DocumentsTab";
 import SettingsTab from "./tabs/SettingsTab";
@@ -23,6 +24,7 @@ const NAV_ICONS: Record<string, React.ElementType> = {
   directory: UserGroupIcon,
   attendance: ClockIcon,
   leave: CalendarDaysIcon,
+  payroll: CurrencyDollarIcon,
   performance: ChartBarIcon,
   documents: DocumentTextIcon,
   settings: Cog6ToothIcon,
@@ -151,20 +153,82 @@ export default function HRAdminDashboard() {
   };
 
   const handleAddEmployee = async (e: any) => {
-    e.preventDefault();
-    if (!newEmp.employee_id || !newEmp.first_name || !newEmp.last_name || !newEmp.email || !newEmp.phone || !newEmp.designation || !newEmp.role || !newEmp.joining_date || !newEmp.salary) return;
-    try {
-      const formData = new FormData();
-      Object.entries(newEmp).forEach(([key, val]) => formData.append(key, val as string));
-      if (profileImage) formData.append("profile_image", profileImage);
-      const response = await fetch(`${BASE_URL}/employees/`, { method: "POST", body: formData });
-      const data = await response.json();
-      alert(data.message || "Employee Added Successfully");
-      await fetchEmployees();
-      setAddEmpOpen(false);
-      setNewEmp(DEFAULT_NEW_EMP);
-    } catch (error) { console.error(error); alert("Error adding employee"); }
-  };
+  e.preventDefault();
+
+  try {
+    console.log("HANDLE ADD EMPLOYEE CALLED");
+    console.log(newEmp);
+
+    const formData = new FormData();
+
+    formData.append("employee_id", newEmp.employee_id);
+    formData.append("first_name", newEmp.first_name);
+    formData.append("last_name", newEmp.last_name);
+    formData.append("email", newEmp.email);
+    formData.append("phone", newEmp.phone);
+    formData.append("joining_date", newEmp.joining_date);
+    formData.append("salary", newEmp.salary);
+
+    formData.append("team_id", newEmp.team_id);
+    formData.append(
+  "department",
+  newEmp.department || ""
+);
+
+formData.append(
+  "designation",
+  newEmp.designation || ""
+);
+    formData.append("role", newEmp.role);
+    formData.append(
+      "reporting_manager",
+      newEmp.reporting_manager
+    );
+
+    formData.append("status", newEmp.status);
+
+    if (profileImage) {
+      formData.append(
+        "profile_image",
+        profileImage
+      );
+    }
+
+    const response = await fetch(
+      `${BASE_URL}/employees/`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const data = await response.json();
+
+    console.log("SERVER RESPONSE:", data);
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Failed to add employee"
+      );
+    }
+
+    alert("Employee Added Successfully");
+
+    await fetchEmployees();
+
+    setAddEmpOpen(false);
+
+    setNewEmp(DEFAULT_NEW_EMP);
+
+  } catch (error: any) {
+
+    console.error(error);
+
+    alert(
+      error.message || "Error adding employee"
+    );
+  }
+};
 
   const handleProfileComplete = async () => {
     if (!currentEmployee) return;
@@ -196,18 +260,7 @@ export default function HRAdminDashboard() {
               <div style={{ fontSize: 11, color: theme.textMuted }}>Full Access • All Features • Manage Everything</div>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Btn onClick={() => setAddEmpOpen(true)}>
-              <PlusIcon style={{ width: 14, height: 14 }} /> Add Employee
-            </Btn>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: theme.surface2, borderRadius: 10, border: `1px solid ${theme.border}` }}>
-              <Avatar initials="HR" size={28} />
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700 }}>HR Admin</div>
-                <div style={{ fontSize: 10, color: theme.textMuted }}>Full Access</div>
-              </div>
-            </div>
-          </div>
+          
         </div>
 
         {/* Navigation */}
@@ -237,6 +290,14 @@ export default function HRAdminDashboard() {
         {nav === "directory"   && <DirectoryTab filteredEmps={filteredEmps} search={search} onSearchChange={setSearch} onAddEmployee={() => setAddEmpOpen(true)}  BASE_URL={BASE_URL} />}
         {nav === "attendance"  && <AttendanceTab attendance={attendance}  BASE_URL={BASE_URL}/>}
         {nav === "leave"       && <LeaveTab leaves={leaves} onApprove={handleApproveLeave} onReject={handleRejectLeave} />}
+        {nav === "payroll" && (
+  <PayrollPage
+    employees={employees}
+    attendance={attendance}
+    leaves={leaves}
+    BASE_URL={BASE_URL}
+  />
+)}
         {nav === "performance" && <PerformanceTab />}
         {nav === "documents"   && <DocumentsTab />}
         {nav === "settings"    && <SettingsTab />}

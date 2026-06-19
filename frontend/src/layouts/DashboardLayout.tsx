@@ -433,6 +433,11 @@ const [reportingEmployees, setReportingEmployees] =
         icon: UserGroupIcon,
         path: "/manager-dashboard",
       },
+       {
+      name: "Employee Dashboard",
+      icon: HomeIcon,
+      path: "/employee-dashboard",
+    },
       { name: "Calendar", icon: CalendarIcon, path: "/calendar" },
       { name: "Reports", icon: ChartBarIcon, path: "/reports" },
     ];
@@ -446,11 +451,6 @@ const [reportingEmployees, setReportingEmployees] =
         name: "HR Management",
         icon: UserGroupIcon,
         path: "/hrms",
-      },
-      {
-        name: "Payroll",
-        icon: BanknotesIcon,
-        path: "/payroll",
       },
       {
         name: "Calendar",

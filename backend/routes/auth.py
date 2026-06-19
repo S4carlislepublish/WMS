@@ -7,6 +7,9 @@ from flask_jwt_extended import (
 )
 from sqlalchemy import or_
 
+from werkzeug.security import check_password_hash
+from werkzeug.security import generate_password_hash
+
 from models.employee import Employee
 from models.user import User
 from models.database import db
@@ -188,3 +191,51 @@ def logout():
     return jsonify({
         'message': 'Logged out successfully'
     }), 200
+
+
+@auth_bp.route("/change-password", methods=["POST"])
+def change_password():
+
+    try:
+
+        data = request.json
+
+        user = User.query.get(
+            data["user_id"]
+        )
+
+        if not user:
+            return jsonify({
+                "success": False,
+                "message": "User not found"
+            }), 404
+
+        if not user.check_password(
+            data["current_password"]
+        ):
+            return jsonify({
+                "success": False,
+                "message": "Current password incorrect"
+            }), 400
+
+        user.password_hash = generate_password_hash(
+            data["new_password"]
+        )
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Password updated successfully"
+        })
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        print("CHANGE PASSWORD ERROR:", str(e))
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500

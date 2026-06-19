@@ -1,5 +1,5 @@
 from models.database import db
-
+from models.user import Role, Team
 
 class Employee(db.Model):
     __tablename__ = "employees"
@@ -47,9 +47,19 @@ class Employee(db.Model):
     salary = db.Column(db.Float)
 
     # Leave Balance
-    sick_leave = db.Column(db.Integer, default=5)
-    casual_leave = db.Column(db.Integer, default=2)
-    earned_leave = db.Column(db.Integer, default=4)
+    sick_leave = db.Column(db.Float, default=1.5)
+    casual_leave = db.Column(db.Float, default=1.5)
+    earned_leave = db.Column(db.Float, default=0)
+
+    last_leave_reset_month = db.Column(
+    db.String(10),
+    nullable=True
+    )
+
+    last_leave_reset_year = db.Column(
+    db.Integer,
+    nullable=True
+    )
 
     # Banking
     bank_name = db.Column(db.String(150))
@@ -84,8 +94,11 @@ class Employee(db.Model):
     pg_college = db.Column(db.String(200))
     pg_percentage = db.Column(db.String(20))
 
-    # PF Details
+    # PF / ESI Details
     pf_number = db.Column(db.String(50))
+    
+    uan_number = db.Column(db.String(50))
+    esi_number = db.Column(db.String(50))
 
     
     # Education Boards
@@ -141,5 +154,18 @@ class Employee(db.Model):
     team_id = db.Column(
     db.Integer,
     db.ForeignKey("teams.id"),
+    nullable=True
+)
+    team = db.relationship(
+    "Team",
+    backref="employees",
+    lazy=True
+)
+    salary_paid = db.Column(
+    db.Boolean,
+    default=False
+)
+    salary_paid_date = db.Column(
+    db.DateTime,
     nullable=True
 )

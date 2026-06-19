@@ -183,8 +183,13 @@ const filteredAttendance =
 const downloadAttendance = async () => {
 
   try {
+    console.log("BASE_URL =", BASE_URL);
+console.log(
+  `${BASE_URL}/attendance/export-monthly`
+);
 
     const response = await fetch(
+      
       `${BASE_URL}/attendance/export-monthly`
     );
 
@@ -267,6 +272,12 @@ const downloadAttendance = async () => {
       {dateRange}
     </div>
   </div>
+  <button
+  onClick={downloadAttendance}
+  className="bg-green-600 text-white px-4 py-2 rounded ml-[600px]"
+>
+  Download Excel
+</button>
 
   {/* Tabs */}
   <div
@@ -494,12 +505,7 @@ const downloadAttendance = async () => {
     Show All
   </button>
 </div>
-<button
-  onClick={downloadAttendance}
-  className="bg-green-600 text-white px-4 py-2 rounded"
->
-  Download Excel
-</button>
+
 
       {/* Title */}
 
@@ -522,6 +528,8 @@ const downloadAttendance = async () => {
           "monthly" &&
           "Monthly Attendance"}
       </div>
+
+      
 
       {/* Loading */}
 

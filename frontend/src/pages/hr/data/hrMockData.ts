@@ -12,6 +12,7 @@ export const NAV = [
   { id: "directory", label: "Staff Directory" },
   { id: "attendance", label: "Attendance" },
   { id: "leave", label: "Leave Management" },
+  { id: "payroll",label: "Payroll" },
   { id: "performance", label: "Performance" },
   { id: "documents", label: "Documents" },
   { id: "settings", label: "Settings" },

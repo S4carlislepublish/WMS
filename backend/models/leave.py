@@ -28,3 +28,37 @@ class LeaveRequest(db.Model):
         default="Pending"
     )
 
+
+
+# =====================================
+# LEAVE LEDGER TABLE
+# =====================================
+
+class LeaveLedger(db.Model):
+
+    __tablename__ = "leave_ledger"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    employee_id = db.Column(db.String(50))
+
+    month = db.Column(db.String(20))
+
+    year = db.Column(db.Integer)
+
+    opening_cl = db.Column(db.Float, default=0)
+    opening_sl = db.Column(db.Float, default=0)
+    opening_el = db.Column(db.Float, default=0)
+
+    credit_cl = db.Column(db.Float, default=5)
+    credit_sl = db.Column(db.Float, default=5)
+    credit_el = db.Column(db.Float, default=5)
+
+    taken_cl = db.Column(db.Float, default=0)
+    taken_sl = db.Column(db.Float, default=0)
+    taken_el = db.Column(db.Float, default=0)
+
+    closing_cl = db.Column(db.Float, default=0)
+    closing_sl = db.Column(db.Float, default=0)
+    closing_el = db.Column(db.Float, default=0)
+

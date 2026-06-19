@@ -10,7 +10,7 @@ from datetime import timedelta
 from openpyxl.styles import Font
 from openpyxl.styles import PatternFill
 from flask import send_file
-
+from models.leave import LeaveRequest, LeaveLedger
 from io import BytesIO
 
 
@@ -753,6 +753,30 @@ def export_monthly_attendance():
 
         ws.title = "Attendance Report"
 
+        today = date.today()
+
+        if today.month == 1:
+
+           start_date = date(
+           today.year - 1,
+           12,
+           25
+        )
+
+        else:
+
+           start_date = date(
+           today.year,
+           today.month - 1,
+           25
+        )
+
+        end_date = date(
+        today.year,
+        today.month,
+        24
+        )
+
         # =====================================
         # STYLES
         # =====================================
@@ -789,7 +813,7 @@ def export_monthly_attendance():
         # TITLE
         # =====================================
 
-        ws.merge_cells("A1:H1")
+        ws.merge_cells("A1:K1")
 
         ws["A1"] = "ATTENDANCE REPORT"
 
@@ -810,7 +834,7 @@ def export_monthly_attendance():
         # MONTH HEADER
         # =====================================
 
-        ws.merge_cells("A2:H2")
+        ws.merge_cells("A2:K2")
 
         ws["A2"] = (
             f"Attendance Summary "
@@ -829,16 +853,15 @@ def export_monthly_attendance():
         # DATE RANGE
         # =====================================
 
-        start_date = date.today() - timedelta(days=30)
 
-        ws.merge_cells("A3:H3")
+        ws.merge_cells("A3:K3")
 
         ws["A3"] = (
-            f"Date Range : "
-            f"{start_date.strftime('%d-%b-%Y')} "
-            f"to "
-            f"{date.today().strftime('%d-%b-%Y')}"
-        )
+    f"Attendance Cycle : "
+    f"{start_date.strftime('%d-%b-%Y')} "
+    f"to "
+    f"{end_date.strftime('%d-%b-%Y')}"
+)
 
         ws["A3"].fill = yellow_fill
 
@@ -853,17 +876,18 @@ def export_monthly_attendance():
         # =====================================
 
         headers = [
-
-            "S.No",
-            "Emp Code",
-            "Emp Name",
-            "D.O.J",
-            "Department",
-            "Days Payable",
-            "Days Worked",
-            "Shift"
-
-        ]
+    "S.No",
+    "Emp Code",
+    "Emp Name",
+    "D.O.J",
+    "Department",
+    "Total Days In Cycle",
+    "Days Payable",
+    "Total Days Worked",
+    "Total Leaves Taken",
+    "Date Of Leave",
+    "Remarks"
+]
 
         for col_num, header in enumerate(
             headers,
@@ -900,15 +924,54 @@ def export_monthly_attendance():
             start=1
         ):
 
-            attendance_records = Attendance.query.filter_by(
-                user_id=employee.user_id
+            attendance_records = Attendance.query.filter(
+            Attendance.user_id == employee.user_id,
+            Attendance.attendance_date >= start_date,
+            Attendance.attendance_date <= end_date
+            ).all()
+
+            leave_requests = LeaveRequest.query.filter(
+            LeaveRequest.employee_id == employee.id,
+            LeaveRequest.status == "Approved"
             ).all()
 
             days_worked = len([
                 a
                 for a in attendance_records
-                if a.status == "Present"
+                if a.status == "Present" 
             ])
+
+            total_leaves = 0
+
+            leave_dates_list = []
+
+            for leave in leave_requests:
+
+                total_leaves += (
+                    leave.total_days or 0
+                )
+
+                if leave.from_date and leave.to_date:
+
+                    leave_dates_list.append(
+                    f"{leave.from_date.strftime('%d-%b-%Y')} "
+                    f"to "
+                    f"{leave.to_date.strftime('%d-%b-%Y')}"
+                )
+
+            leave_dates = ", ".join(
+            leave_dates_list
+        )
+            remarks = ""
+
+            total_days_cycle = (
+            end_date - start_date
+        ).days + 1
+
+            days_payable = (
+            total_days_cycle -
+            total_leaves
+)
 
             ws.cell(
                 row=row,
@@ -950,27 +1013,37 @@ def export_monthly_attendance():
                 if employee.department
                 else "-"
             )
+            ws.cell(
+              row=row,
+              column=6
+            ).value = total_days_cycle
 
             ws.cell(
-                row=row,
-                column=6
-            ).value = 30
+               row=row,
+               column=7
+            ).value = days_payable
 
             ws.cell(
-                row=row,
-                column=7
+               row=row,
+               column=8
             ).value = days_worked
 
             ws.cell(
-                row=row,
-                column=8
-            ).value = (
-                employee.shift_timing
-                if employee.shift_timing
-                else "General Shift"
-            )
+            row=row,
+            column=9
+            ).value = total_leaves
 
-            for col in range(1, 9):
+            ws.cell(
+            row=row,
+            column=10
+            ).value = leave_dates
+
+            ws.cell(
+            row=row,
+            column=11
+            ).value = ""
+
+            for col in range(1, 12):
 
                 ws.cell(
                     row=row,
@@ -997,13 +1070,14 @@ def export_monthly_attendance():
                     column_cells[0].column
                 )
             ].width = length + 5
+            ws.column_dimensions["A"].width = 6
 
         # =====================================
         # FILTER
         # =====================================
 
         ws.auto_filter.ref = (
-            f"A5:H{row}"
+            f"A5:K{row}"
         )
 
         # =====================================
@@ -1023,6 +1097,431 @@ def export_monthly_attendance():
             mimetype=(
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+        )
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+    
+
+@attendance_bp.route(
+    "/credit-monthly-leaves",
+    methods=["POST"]
+)
+def credit_monthly_leaves():
+
+    try:
+
+        current_month = datetime.now().strftime("%B")
+        current_year = datetime.now().year
+
+        employees = Employee.query.all()
+
+        for employee in employees:
+
+            existing = LeaveLedger.query.filter_by(
+                employee_id=employee.employee_id,
+                month=current_month,
+                year=current_year
+            ).first()
+
+            if existing:
+                continue
+
+            opening_cl = employee.casual_leave or 0
+            opening_sl = employee.sick_leave or 0
+            opening_el = employee.earned_leave or 0
+
+            credit_cl = 5
+            credit_sl = 5
+            credit_el = 5
+
+            closing_cl = opening_cl + credit_cl
+            closing_sl = opening_sl + credit_sl
+            closing_el = opening_el + credit_el
+
+            employee.casual_leave = closing_cl
+            employee.sick_leave = closing_sl
+            employee.earned_leave = closing_el
+
+            ledger = LeaveLedger(
+
+                employee_id=employee.employee_id,
+
+                month=current_month,
+                year=current_year,
+
+                opening_cl=opening_cl,
+                opening_sl=opening_sl,
+                opening_el=opening_el,
+
+                credit_cl=credit_cl,
+                credit_sl=credit_sl,
+                credit_el=credit_el,
+
+                closing_cl=closing_cl,
+                closing_sl=closing_sl,
+                closing_el=closing_el
+            )
+
+            db.session.add(ledger)
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Leave credited successfully"
+        })
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+    
+@attendance_bp.route(
+    "/export-paysheet",
+    methods=["GET"]
+)
+def export_paysheet():
+
+    try:
+
+        wb = Workbook()
+
+        ws = wb.active
+
+        ws.title = "Paysheet"
+
+        today = date.today()
+
+        if today.month == 1:
+
+            start_date = date(
+                today.year - 1,
+                12,
+                25
+            )
+
+        else:
+
+            start_date = date(
+                today.year,
+                today.month - 1,
+                25
+            )
+
+        end_date = date(
+            today.year,
+            today.month,
+            24
+        )
+
+        header_fill = PatternFill(
+            fill_type="solid",
+            fgColor="D9A066"
+        )
+
+        header_font = Font(
+            bold=True
+        )
+
+        thin_border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin")
+        )
+
+        ws.merge_cells("A1:AF1")
+
+        ws["A1"] = "PAYSHEET REPORT"
+
+        ws["A1"].font = Font(
+            bold=True,
+            size=16
+        )
+
+        ws["A1"].alignment = Alignment(
+            horizontal="center"
+        )
+
+        headers = [
+
+            "S.No",
+            "EMP NO",
+            "Gender",
+            "PF No",
+            "UAN No",
+            "ESI No",
+
+            "Employee Name",
+
+            "Department",
+            "Designation",
+
+            "Mail ID",
+
+            "DOJ",
+
+            "No Of Days In Month",
+
+            "Days Payable",
+
+            "Basic",
+
+            "HRA",
+
+            "LTA",
+
+            "Other Allowance",
+
+            "Gross Salary",
+
+            "Actual Month CTC",
+
+            "Earned Month CTC",
+
+            "PF Deduction",
+
+            "ESI Deduction",
+
+            "TDS",
+
+            "PT",
+
+            "LWF",
+
+            "Bonus",
+
+            "Internet Charges",
+
+            "Salary Advance",
+
+            "Account Number",
+
+            "IFSC Code",
+
+            "Net Transfer",
+
+            "Remarks"
+        ]
+
+        for col_num, header in enumerate(
+            headers,
+            start=1
+        ):
+
+            cell = ws.cell(
+                row=3,
+                column=col_num
+            )
+
+            cell.value = header
+
+            cell.fill = header_fill
+
+            cell.font = header_font
+
+            cell.border = thin_border
+
+        employees = Employee.query.all()
+
+        row = 4
+
+        for index, employee in enumerate(
+            employees,
+            start=1
+        ):
+
+            attendance_records = Attendance.query.filter(
+                Attendance.user_id == employee.user_id,
+                Attendance.attendance_date >= start_date,
+                Attendance.attendance_date <= end_date
+            ).all()
+
+            leave_requests = LeaveRequest.query.filter(
+                LeaveRequest.employee_id == str(employee.id),
+                LeaveRequest.status == "Approved"
+            ).all()
+
+            total_leaves = sum(
+                leave.total_days or 0
+                for leave in leave_requests
+            )
+
+            total_days_cycle = (
+                end_date - start_date
+            ).days + 1
+
+            days_payable = (
+                total_days_cycle -
+                total_leaves
+            )
+
+            salary = (
+                employee.salary or 0
+            )
+
+            hra = 0
+            lta = 0
+            other_allowance = 0
+
+            pf_deduction = 0
+            esi_deduction = 0
+            tds = 0
+            pt = 0
+            lwf = 0
+
+            bonus = 0
+
+            internet_charges = 0
+
+            salary_advance = 0
+
+            actual_ctc = salary
+
+            earned_ctc = round(
+                (
+                    salary /
+                    total_days_cycle
+                ) *
+                days_payable,
+                2
+            )
+
+            net_transfer = round(
+                earned_ctc -
+                (
+                    pf_deduction +
+                    esi_deduction +
+                    tds +
+                    pt +
+                    lwf +
+                    salary_advance
+                ),
+                2
+            )
+
+            data = [
+
+                index,
+
+                employee.employee_id,
+
+                employee.gender,
+
+                employee.pf_number,
+
+                employee.uan_number,
+
+                employee.esi_number,
+
+                f"{employee.first_name} {employee.last_name}",
+
+                employee.department,
+
+                employee.designation,
+
+                employee.email,
+
+                str(employee.joining_date),
+
+                total_days_cycle,
+
+                days_payable,
+
+                salary,
+
+                hra,
+
+                lta,
+
+                other_allowance,
+
+                salary,
+
+                actual_ctc,
+
+                earned_ctc,
+
+                pf_deduction,
+
+                esi_deduction,
+
+                tds,
+
+                pt,
+
+                lwf,
+
+                bonus,
+
+                internet_charges,
+
+                salary_advance,
+
+                employee.account_number,
+
+                employee.ifsc_code,
+
+                net_transfer,
+
+                ""
+            ]
+
+            for col_num, value in enumerate(
+                data,
+                start=1
+            ):
+
+                cell = ws.cell(
+                    row=row,
+                    column=col_num,
+                    value=value
+                )
+
+                cell.border = thin_border
+
+            row += 1
+
+        for column_cells in ws.columns:
+
+            try:
+
+                length = max(
+                    len(str(cell.value))
+                    if cell.value
+                    else 0
+                    for cell in column_cells
+                )
+
+                ws.column_dimensions[
+                    get_column_letter(
+                        column_cells[0].column
+                    )
+                ].width = length + 5
+
+            except:
+                pass
+
+        output = BytesIO()
+
+        wb.save(output)
+
+        output.seek(0)
+
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name="Paysheet_Report.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
     except Exception as e:

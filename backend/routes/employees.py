@@ -8,6 +8,8 @@ from models.user import User
 from middleware.auth import auth_required
 from datetime import date, timedelta
 from models.attendance import Attendance
+from models.user import Role, Team
+from services.leave_balance_service import update_leave_balance
 
 employees_bp = Blueprint("employees", __name__)
 
@@ -35,6 +37,10 @@ def create_employee():
                 data["joining_date"],
                 "%Y-%m-%d"
             ).date()
+            print("TEAM ID =", data.get("team_id"))
+            print("DEPARTMENT =", data.get("department"))
+            print("DESIGNATION =", data.get("designation"))
+            print("ROLE =", data.get("role"))
 
         employee = Employee(
     employee_id=data.get("employee_id"),
@@ -55,6 +61,19 @@ def create_employee():
     joining_date=joining_date,
 
     salary=float(data.get("salary", 0)),
+
+      # PF / UAN / ESI
+    pf_number=data.get(
+        "pf_number"
+    ),
+
+    uan_number=data.get(
+        "uan_number"
+    ),
+
+    esi_number=data.get(
+        "esi_number"
+    ),
 
     profile_completed=False,
     is_first_login=True,
@@ -197,6 +216,8 @@ def get_employee(employee_id):
     "blood_group": employee.blood_group,
 
     "pf_number": employee.pf_number,
+    "uan_number": employee.uan_number,
+    "esi_number": employee.esi_number,
 
 
 "tenth_board": employee.tenth_board,
@@ -351,7 +372,17 @@ def update_employee_profile(employee_id):
         employee.pf_number = data.get(
         "pf_number",
         employee.pf_number
-    )
+       )
+
+        employee.uan_number = data.get(
+        "uan_number",
+         employee.uan_number 
+        )
+
+        employee.esi_number = data.get(
+        "esi_number",
+        employee.esi_number
+        )
 
 # Boards
         employee.tenth_board = data.get(
@@ -716,6 +747,8 @@ def get_my_team(user_id):
         ).first()
 
         if employee:
+            update_leave_balance(employee)
+
 
             result.append({
                 "id": employee.id,
@@ -852,3 +885,53 @@ def get_reporting_employees(user_id):
         return jsonify({
             "error": str(e)
         }), 500
+    
+@employees_bp.route(
+    "/roles/<int:team_id>",
+    methods=["GET"]
+)
+def get_roles_by_team(team_id):
+
+    roles = Role.query.filter_by(
+        team_id=team_id
+    ).all()
+
+    return jsonify([
+        {
+            "id": role.id,
+            "name": role.name
+        }
+        for role in roles
+    ])
+
+@employees_bp.route(
+    "/profile/<int:user_id>",
+    methods=["GET"]
+)
+def get_employee_profile(user_id):
+
+    employee = Employee.query.filter_by(
+        user_id=user_id
+    ).first()
+
+    if not employee:
+        return jsonify({
+            "success": False,
+            "message": "Employee not found"
+        }), 404
+
+    return jsonify({
+        "success": True,
+        "data": {
+            "id": employee.id,
+            "employee_id": employee.employee_id,
+            "first_name": employee.first_name,
+            "last_name": employee.last_name,
+            "email": employee.email,
+            "phone": employee.phone,
+            "department": employee.department,
+            "designation": employee.designation,
+            "joining_date": str(employee.joining_date),
+            "reporting_manager": employee.reporting_manager
+        }
+    })

@@ -4,6 +4,8 @@ import Avatar from "../components/Avatar";
 import Chip from "../components/Chip";
 import { theme } from "../data/hrMockData";
 
+const BASE_URL = "http://10.1.8.103:5000/api";
+
 const thS: React.CSSProperties = {
   padding: "14px",
   textAlign: "left",
@@ -29,8 +31,21 @@ const LeaveTab: React.FC<LeaveTabProps> = ({
   onApprove,
   onReject,
 }) => {
+
+
+  const downloadLeaveReport = () => {
+
+  window.open(
+    `${BASE_URL}/leaves/export-leave-report`,
+    "_blank"
+  );
+
+};
+
   return (
     <Panel>
+      <div className="flex">
+      <div>
       <div
         style={{
           fontSize: 15,
@@ -50,6 +65,15 @@ const LeaveTab: React.FC<LeaveTabProps> = ({
       >
         Approve or reject leave requests as HR Admin
       </div>
+      </div>
+      <button
+  onClick={downloadLeaveReport}
+  className="bg-green-600 text-white px-2 py-1 rounded ml-[800px] mb-[10px]"
+>
+  Download Leave Report
+</button>
+
+</div>
 
       <div
         style={{
