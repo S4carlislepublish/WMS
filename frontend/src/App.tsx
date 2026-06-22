@@ -33,6 +33,7 @@ import EmployeeDashboardPage from './pages/employee/EmployeeDashboardPage';
 import Editorpage from './pages/EditorPage';
 import CompleteProfile from './pages/Compeleteprofilepage';
 import AnnouncementsPage from './pages/AnnouncementsPage';
+import TelecomDirectory from './pages/TelecomDirectoryTab';
 
 
 
@@ -287,6 +288,13 @@ return ( <BrowserRouter>
     <ProtectedRoute>
       <Editorpage />
     </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/telecom-directory"
+  element={
+  <ProtectedRoute><TelecomDirectory /></ProtectedRoute>
   }
 />
 

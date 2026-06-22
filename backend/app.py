@@ -45,6 +45,7 @@ from routes.employee_details import employee_details_bp
 from routes.notifications import (
     notification_bp
 )
+from routes.telecom import telecom_bp
 
 def create_app():
     app = Flask(__name__)
@@ -93,6 +94,10 @@ def create_app():
     app.register_blueprint(
     payroll_bp,
     url_prefix="/api/payroll"
+)
+    app.register_blueprint(
+    telecom_bp,
+    url_prefix="/api/telecom"
 )
 
 
